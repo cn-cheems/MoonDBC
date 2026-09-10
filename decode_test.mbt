@@ -53,12 +53,11 @@ test "decode full-width signed Intel signal" {
 }
 
 ///|
-test "reject short payload and unsupported byte order" {
+test "reject short Intel payload" {
   let result = @moondbc.parse(
     (
       #|BO_ 13 Mixed: 8 ECU
       #| SG_ TooFar : 12|8@1+ (1,0) [0|255] "" Logger
-      #| SG_ BigEndian : 7|8@0+ (1,0) [0|255] "" Logger
     ),
   )
   let message = result.database.messages[0]
@@ -66,10 +65,44 @@ test "reject short payload and unsupported byte order" {
     message.signals[0].decode_raw(b"\x00\x00"),
     Err(@moondbc.FrameTooShort(20, 16)),
   )
-  assert_eq(
-    message.signals[1].decode_raw(b"\x00\x00"),
-    Err(@moondbc.UnsupportedByteOrder(@moondbc.Motorola)),
+}
+
+///|
+test "decode aligned Motorola signal" {
+  let result = @moondbc.parse(
+    (
+      #|BO_ 20 BigEndian: 2 ECU
+      #| SG_ Word : 7|16@0+ (0.5,1) [0|32768.5] "V" Logger
+    ),
   )
+  let signal = result.database.messages[0].signals[0]
+  assert_eq(signal.decode_raw(b"\x12\x34"), Ok(@moondbc.UnsignedRaw(4660UL)))
+  assert_eq(signal.decode(b"\x12\x34"), Ok(2331.0))
+}
+
+///|
+test "decode unaligned signed Motorola signal" {
+  let result = @moondbc.parse(
+    (
+      #|BO_ 21 PackedBigEndian: 2 ECU
+      #| SG_ Temperature : 3|12@0- (1,0) [-2048|2047] "degC" Logger
+    ),
+  )
+  let signal = result.database.messages[0].signals[0]
+  assert_eq(signal.decode_raw(b"\x0f\xec"), Ok(@moondbc.SignedRaw(-20L)))
+  assert_eq(signal.decode(b"\x0f\xec"), Ok(-20.0))
+}
+
+///|
+test "reject short Motorola payload" {
+  let result = @moondbc.parse(
+    (
+      #|BO_ 22 BigEndian: 2 ECU
+      #| SG_ Word : 7|16@0+ (1,0) [0|65535] "" Logger
+    ),
+  )
+  let signal = result.database.messages[0].signals[0]
+  assert_eq(signal.decode_raw(b"\x12"), Err(@moondbc.FrameTooShort(16, 8)))
 }
 
 ///|

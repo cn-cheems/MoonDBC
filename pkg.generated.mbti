@@ -24,7 +24,6 @@ pub(all) struct Database {
 pub fn Database::find_message(Self, UInt) -> Message?
 
 pub(all) enum DecodeError {
-  UnsupportedByteOrder(ByteOrder)
   InvalidSignalLayout(Int, Int)
   FrameTooShort(Int, Int)
 } derive(Eq, @debug.Debug)
