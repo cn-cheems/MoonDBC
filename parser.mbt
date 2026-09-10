@@ -25,10 +25,25 @@ fn parse_uint(text : StringView) -> UInt? {
 }
 
 ///|
+fn parse_int64(text : StringView) -> Int64? {
+  Some(@strconv.parse_int64(text)) catch {
+    _ => None
+  }
+}
+
+///|
 fn parse_double(text : StringView) -> Double? {
   Some(@strconv.parse_double(text)) catch {
     _ => None
   }
+}
+
+///|
+priv struct PendingValueTable {
+  line : Int
+  message_id : UInt
+  signal_name : String
+  entries : Array[ValueDescription]
 }
 
 ///|
@@ -242,6 +257,69 @@ fn parse_version_line(line : StringView) -> String? {
 }
 
 ///|
+fn contains_value_description(
+  entries : Array[ValueDescription],
+  value : Int64,
+) -> Bool {
+  for entry in entries {
+    if entry.value == value {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn parse_value_line(
+  line : StringView,
+) -> Result[(UInt, String, Array[ValueDescription]), String] {
+  let body = line[5:].trim()
+  if !body.has_suffix(";") {
+    return Err("value table declaration is missing ';'")
+  }
+  let content = body[:body.length() - 1].trim()
+  let fields = words(content)
+  if fields.length() < 4 {
+    return Err("value table requires a message id, signal name, and entry")
+  }
+  let message_id = match parse_uint(fields[0]) {
+    Some(value) => value
+    None => return Err("value table message id is not an unsigned integer")
+  }
+  let signal_start = match find_after(content, fields[0].length(), fields[1]) {
+    Some(value) => value
+    None => return Err("value table signal name is missing")
+  }
+  let signal_name = fields[1].to_owned()
+  let mut rest = content[signal_start + fields[1].length():].trim()
+  let entries : Array[ValueDescription] = []
+  while !rest.is_empty() {
+    let open_quote = match rest.find("\"") {
+      Some(value) => value
+      None => return Err("value description is missing an opening quote")
+    }
+    let raw_fields = words(rest[:open_quote])
+    if raw_fields.length() != 1 {
+      return Err("value description requires one integer value")
+    }
+    let value = match parse_int64(raw_fields[0]) {
+      Some(value) => value
+      None => return Err("value description key is not an integer")
+    }
+    if contains_value_description(entries, value) {
+      return Err("value table contains a duplicate key")
+    }
+    let close_quote = match find_after(rest, open_quote + 1, "\"") {
+      Some(value) => value
+      None => return Err("value description is missing a closing quote")
+    }
+    entries.push({ value, label: rest[open_quote + 1:close_quote].to_owned(), })
+    rest = rest[close_quote + 1:].trim()
+  }
+  Ok((message_id, signal_name, entries))
+}
+
+///|
 fn contains_message_id(messages : Array[Message], id : UInt) -> Bool {
   for message in messages {
     if message.id == id {
@@ -249,6 +327,16 @@ fn contains_message_id(messages : Array[Message], id : UInt) -> Bool {
     }
   }
   false
+}
+
+///|
+fn find_message_index(messages : Array[Message], id : UInt) -> Int? {
+  for index, message in messages {
+    if message.id == id {
+      return Some(index)
+    }
+  }
+  None
 }
 
 ///|
@@ -272,6 +360,20 @@ fn contains_node(nodes : Array[String], name : StringView) -> Bool {
 }
 
 ///|
+fn contains_value_table(
+  tables : Array[ValueTable],
+  message_id : UInt,
+  signal_name : StringView,
+) -> Bool {
+  for table in tables {
+    if table.message_id == message_id && table.signal_name.view() == signal_name {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn add_diagnostic(
   diagnostics : Array[Diagnostic],
   line : Int,
@@ -287,6 +389,8 @@ fn add_diagnostic(
 pub fn parse(source : StringView) -> ParseResult {
   let messages : Array[Message] = []
   let nodes : Array[String] = []
+  let pending_value_tables : Array[PendingValueTable] = []
+  let value_tables : Array[ValueTable] = []
   let diagnostics : Array[Diagnostic] = []
   let mut version : String? = None
   let mut current_message : Int? = None
@@ -356,7 +460,58 @@ pub fn parse(source : StringView) -> ParseResult {
               add_diagnostic(diagnostics, line_number, "DBC005", message)
           }
       }
+    } else if line.has_prefix("VAL_ ") {
+      match parse_value_line(line) {
+        Ok((message_id, signal_name, entries)) =>
+          pending_value_tables.push({
+            line: line_number,
+            message_id,
+            signal_name,
+            entries,
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC007", message)
+      }
     }
   }
-  { database: { version, nodes, messages, }, diagnostics, }
+  for pending in pending_value_tables {
+    match find_message_index(messages, pending.message_id) {
+      None =>
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC008",
+          "value table refers to an unknown message",
+        )
+      Some(message_index) => {
+        let message = messages[message_index]
+        if !contains_signal_name(message, pending.signal_name) {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC009",
+            "value table refers to an unknown signal",
+          )
+        } else if contains_value_table(
+            value_tables,
+            pending.message_id,
+            pending.signal_name,
+          ) {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC010",
+            "duplicate value table for the same signal",
+          )
+        } else {
+          value_tables.push({
+            message_id: pending.message_id,
+            signal_name: pending.signal_name,
+            entries: pending.entries,
+          })
+        }
+      }
+    }
+  }
+  { database: { version, nodes, messages, value_tables, }, diagnostics, }
 }

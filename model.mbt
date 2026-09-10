@@ -44,10 +44,24 @@ pub(all) struct Message {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct ValueDescription {
+  value : Int64
+  label : String
+} derive(Eq, Debug)
+
+///|
+pub(all) struct ValueTable {
+  message_id : UInt
+  signal_name : String
+  entries : Array[ValueDescription]
+} derive(Eq, Debug)
+
+///|
 pub(all) struct Database {
   version : String?
   nodes : Array[String]
   messages : Array[Message]
+  value_tables : Array[ValueTable]
 } derive(Eq, Debug)
 
 ///|
@@ -87,4 +101,41 @@ pub fn Message::find_signal(self : Message, name : StringView) -> Signal? {
     }
   }
   None
+}
+
+///|
+pub fn Database::find_value_table(
+  self : Database,
+  message_id : UInt,
+  signal_name : StringView,
+) -> ValueTable? {
+  for table in self.value_tables {
+    if table.message_id == message_id && table.signal_name.view() == signal_name {
+      return Some(table)
+    }
+  }
+  None
+}
+
+///|
+pub fn ValueTable::find_label(self : ValueTable, value : Int64) -> String? {
+  for entry in self.entries {
+    if entry.value == value {
+      return Some(entry.label)
+    }
+  }
+  None
+}
+
+///|
+pub fn Database::value_label(
+  self : Database,
+  message_id : UInt,
+  signal_name : StringView,
+  value : Int64,
+) -> String? {
+  match self.find_value_table(message_id, signal_name) {
+    Some(table) => table.find_label(value)
+    None => None
+  }
 }

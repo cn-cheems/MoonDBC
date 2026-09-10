@@ -20,8 +20,11 @@ pub(all) struct Database {
   version : String?
   nodes : Array[String]
   messages : Array[Message]
+  value_tables : Array[ValueTable]
 } derive(Eq, @debug.Debug)
 pub fn Database::find_message(Self, UInt) -> Message?
+pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
+pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
 
 pub(all) enum DecodeError {
   InvalidSignalLayout(Int, Int)
@@ -92,10 +95,22 @@ pub fn Signal::decode_raw(Self, BytesView) -> Result[RawValue, DecodeError]
 pub fn Signal::encode(Self, BytesView, Double) -> Result[Bytes, EncodeError]
 pub fn Signal::encode_raw(Self, BytesView, RawValue) -> Result[Bytes, EncodeError]
 
+pub(all) struct ValueDescription {
+  value : Int64
+  label : String
+} derive(Eq, @debug.Debug)
+
 pub(all) enum ValueKind {
   Unsigned
   Signed
 } derive(Eq, @debug.Debug)
+
+pub(all) struct ValueTable {
+  message_id : UInt
+  signal_name : String
+  entries : Array[ValueDescription]
+} derive(Eq, @debug.Debug)
+pub fn ValueTable::find_label(Self, Int64) -> String?
 
 // Type aliases
 
