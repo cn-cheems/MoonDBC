@@ -35,6 +35,17 @@ pub(all) struct Diagnostic {
   message : String
 } derive(Eq, @debug.Debug)
 
+pub(all) enum EncodeError {
+  EncodeInvalidLayout(Int, Int)
+  EncodeFrameTooShort(Int, Int)
+  ValueKindMismatch(ValueKind, RawValue)
+  RawValueOutOfRange(RawValue, Int)
+  InvalidFactor(Double)
+  NonFinitePhysicalValue(Double)
+  PhysicalValueOutOfRange(Double, Double, Double)
+  PhysicalRawOutOfRange(Double, Int)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct Message {
   id : UInt
   name : String
@@ -78,6 +89,8 @@ pub(all) struct Signal {
 } derive(Eq, @debug.Debug)
 pub fn Signal::decode(Self, BytesView) -> Result[Double, DecodeError]
 pub fn Signal::decode_raw(Self, BytesView) -> Result[RawValue, DecodeError]
+pub fn Signal::encode(Self, BytesView, Double) -> Result[Bytes, EncodeError]
+pub fn Signal::encode_raw(Self, BytesView, RawValue) -> Result[Bytes, EncodeError]
 
 pub(all) enum ValueKind {
   Unsigned
