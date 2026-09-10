@@ -1,0 +1,76 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "cn-cheems/moondbc"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse(StringView) -> ParseResult
+
+// Errors
+
+// Types and methods
+pub(all) enum ByteOrder {
+  Motorola
+  Intel
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Database {
+  version : String?
+  nodes : Array[String]
+  messages : Array[Message]
+} derive(Eq, @debug.Debug)
+pub fn Database::find_message(Self, UInt) -> Message?
+
+pub(all) struct Diagnostic {
+  line : Int
+  column : Int
+  code : String
+  message : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Message {
+  id : UInt
+  name : String
+  payload_size : Int
+  transmitter : String
+  signals : Array[Signal]
+} derive(Eq, @debug.Debug)
+pub fn Message::find_signal(Self, StringView) -> Signal?
+
+pub(all) enum MultiplexRole {
+  Plain
+  Multiplexer
+  Multiplexed(Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ParseResult {
+  database : Database
+  diagnostics : Array[Diagnostic]
+} derive(Eq, @debug.Debug)
+pub fn ParseResult::is_valid(Self) -> Bool
+
+pub(all) struct Signal {
+  name : String
+  start_bit : Int
+  bit_length : Int
+  byte_order : ByteOrder
+  value_kind : ValueKind
+  factor : Double
+  offset : Double
+  minimum : Double
+  maximum : Double
+  unit : String
+  receivers : Array[String]
+  multiplex : MultiplexRole
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ValueKind {
+  Unsigned
+  Signed
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

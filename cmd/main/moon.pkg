@@ -1,0 +1,5 @@
+import {
+  "cn-cheems/moondbc",
+}
+
+pkgtype(kind: "executable")
