@@ -17,6 +17,14 @@ fn main {
         "  \{signal.name} start=\{signal.start_bit} length=\{signal.bit_length} unit=\{signal.unit}",
       )
     }
+    match message.find_signal("EngineSpeed") {
+      Some(signal) =>
+        match signal.decode(b"\x40\x1f\x00\x00\x00\x00\x00\x00") {
+          Ok(value) => println("  decoded EngineSpeed=\{value} rpm")
+          Err(_) => println("  unable to decode EngineSpeed")
+        }
+      None => ()
+    }
   }
   for diagnostic in result.diagnostics {
     println(

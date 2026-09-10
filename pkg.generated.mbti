@@ -23,6 +23,12 @@ pub(all) struct Database {
 } derive(Eq, @debug.Debug)
 pub fn Database::find_message(Self, UInt) -> Message?
 
+pub(all) enum DecodeError {
+  UnsupportedByteOrder(ByteOrder)
+  InvalidSignalLayout(Int, Int)
+  FrameTooShort(Int, Int)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct Diagnostic {
   line : Int
   column : Int
@@ -51,6 +57,12 @@ pub(all) struct ParseResult {
 } derive(Eq, @debug.Debug)
 pub fn ParseResult::is_valid(Self) -> Bool
 
+pub(all) enum RawValue {
+  UnsignedRaw(UInt64)
+  SignedRaw(Int64)
+} derive(Eq, @debug.Debug)
+pub fn RawValue::to_double(Self) -> Double
+
 pub(all) struct Signal {
   name : String
   start_bit : Int
@@ -65,6 +77,8 @@ pub(all) struct Signal {
   receivers : Array[String]
   multiplex : MultiplexRole
 } derive(Eq, @debug.Debug)
+pub fn Signal::decode(Self, BytesView) -> Result[Double, DecodeError]
+pub fn Signal::decode_raw(Self, BytesView) -> Result[RawValue, DecodeError]
 
 pub(all) enum ValueKind {
   Unsigned
