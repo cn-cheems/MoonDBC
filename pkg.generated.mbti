@@ -46,6 +46,7 @@ pub(all) struct Database {
 pub fn Database::compatibility_report(Self, Self) -> CompatibilityReport
 pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
+pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::generate_moonbit_constants(Self) -> String
@@ -113,6 +114,19 @@ pub(all) enum FrameDecodeError {
   SignalDecodeFailed(String, DecodeError)
 } derive(Eq, @debug.Debug)
 
+pub(all) enum FrameEncodeError {
+  FrameEncodeUnknownMessage(UInt)
+  FrameEncodeInvalidPayloadSize(Int)
+  FrameEncodeUnknownSignal(String)
+  FrameEncodeDuplicateSignal(String)
+  FrameEncodeMissingSignal(String)
+  FrameEncodeInactiveSignal(String, Int)
+  FrameEncodeMissingMultiplexer
+  FrameEncodeMultipleMultiplexers
+  FrameSignalEncodeFailed(String, EncodeError)
+  FrameMultiplexerDecodeFailed(String, DecodeError)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct Message {
   id : UInt
   name : String
@@ -121,6 +135,7 @@ pub(all) struct Message {
   signals : Array[Signal]
 } derive(Eq, @debug.Debug)
 pub fn Message::decode_frame(Self, BytesView) -> Result[DecodedMessage, FrameDecodeError]
+pub fn Message::encode_frame(Self, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
 pub fn Message::find_signal(Self, StringView) -> Signal?
 
 pub(all) struct MessageMetadata {
@@ -165,6 +180,11 @@ pub fn Signal::decode(Self, BytesView) -> Result[Double, DecodeError]
 pub fn Signal::decode_raw(Self, BytesView) -> Result[RawValue, DecodeError]
 pub fn Signal::encode(Self, BytesView, Double) -> Result[Bytes, EncodeError]
 pub fn Signal::encode_raw(Self, BytesView, RawValue) -> Result[Bytes, EncodeError]
+
+pub(all) struct SignalAssignment {
+  name : String
+  physical : Double
+} derive(Eq, @debug.Debug)
 
 pub(all) enum ValidationIssue {
   DuplicateMessageIdIssue(UInt)

@@ -38,6 +38,7 @@ moon test --target wasm --deny-warn
 - raw and physical signal encoding without mutating the input payload;
 - type, width, frame, scale, and physical range validation;
 - message-level frame decoding with multiplex selector dispatch;
+- message-level frame encoding from strict named signal assignments;
 - automatic enrichment of decoded values with `VAL_` labels;
 - semantic validation for frame bounds, overlaps, scaling, and multiplexing;
 - deterministic model comparison for messages, signals, and value tables;
