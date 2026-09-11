@@ -26,6 +26,8 @@ fn main {
     .unwrap()
   let frame : @moondbc.CanFrame = { id: 256U, payload, }
   println("SocketCAN frame: \{frame.to_text().unwrap()}")
+  let trace = result.database.decode_trace(frame.to_text().unwrap())
+  println("trace rows: \{trace.frames.length()}")
   for message in result.database.messages {
     println(
       "id=\{message.id} \{message.name}: \{message.signals.length()} signal(s)",

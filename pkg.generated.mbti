@@ -65,6 +65,7 @@ pub(all) struct Database {
 pub fn Database::compatibility_report(Self, Self) -> CompatibilityReport
 pub fn Database::decode_can_frame(Self, CanFrame) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, FrameDecodeError]
+pub fn Database::decode_trace(Self, StringView) -> TraceDecodeResult
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
 pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
 pub fn Database::find_message(Self, UInt) -> Message?
@@ -116,6 +117,12 @@ pub(all) struct DecodedSignal {
   physical : Double
   unit : String
   label : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DecodedTraceFrame {
+  line : Int
+  frame : CanFrame
+  decoded : DecodedMessage
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Diagnostic {
@@ -214,6 +221,24 @@ pub fn Signal::encode_raw(Self, BytesView, RawValue) -> Result[Bytes, EncodeErro
 pub(all) struct SignalAssignment {
   name : String
   physical : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TraceDecodeResult {
+  frames : Array[DecodedTraceFrame]
+  diagnostics : Array[TraceDiagnostic]
+} derive(Eq, @debug.Debug)
+pub fn TraceDecodeResult::is_valid(Self) -> Bool
+pub fn TraceDecodeResult::to_csv(Self) -> Result[String, CanFrameTextError]
+
+pub(all) struct TraceDiagnostic {
+  line : Int
+  text : String
+  error : TraceError
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TraceError {
+  TraceFrameTextError(CanFrameTextError)
+  TraceFrameDecodeError(FrameDecodeError)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum ValidationIssue {
