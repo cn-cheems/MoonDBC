@@ -24,6 +24,8 @@ fn main {
       { name: "Gear", physical: 0.0, },
     ])
     .unwrap()
+  let frame : @moondbc.CanFrame = { id: 256U, payload, }
+  println("SocketCAN frame: \{frame.to_text().unwrap()}")
   for message in result.database.messages {
     println(
       "id=\{message.id} \{message.name}: \{message.signals.length()} signal(s)",
@@ -33,7 +35,7 @@ fn main {
         "  \{signal.name} start=\{signal.start_bit} length=\{signal.bit_length} unit=\{signal.unit}",
       )
     }
-    match result.database.decode_frame(message.id, payload) {
+    match result.database.decode_can_frame(frame) {
       Ok(decoded) =>
         for signal in decoded.signals {
           match signal.label {

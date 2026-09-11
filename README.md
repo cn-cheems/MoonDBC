@@ -45,6 +45,7 @@ moon test --target wasm --deny-warn
 - compatibility impact classification and deterministic Markdown change reports;
 - standalone MoonBit constant generation for static CAN metadata;
 - deterministic DBC export with parse-write-parse round-trip support;
+- compact SocketCAN frame parsing, formatting, and direct database decoding;
 - recoverable diagnostics for malformed and misplaced declarations;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
