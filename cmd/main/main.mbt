@@ -11,6 +11,9 @@ fn main {
   let result = @moondbc.parse(source)
   println("MoonDBC parsed \{result.database.messages.length()} message(s)")
   println("validation issues: \{result.database.validate().length()}")
+  println(
+    "self comparison changes: \{result.database.diff(result.database).length()}",
+  )
   let payload = b"\x40\x1f\x00\x00\x00\x00\x00\x00"
   for message in result.database.messages {
     println(

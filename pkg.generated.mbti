@@ -23,10 +23,25 @@ pub(all) struct Database {
   value_tables : Array[ValueTable]
 } derive(Eq, @debug.Debug)
 pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, FrameDecodeError]
+pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::validate(Self) -> Array[ValidationIssue]
 pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
+
+pub(all) enum DatabaseChange {
+  VersionChangedChange(String?, String?)
+  NodesChangedChange(Array[String], Array[String])
+  MessageAddedChange(Message)
+  MessageRemovedChange(Message)
+  MessageMetadataChangedChange(UInt, MessageMetadata, MessageMetadata)
+  SignalAddedChange(UInt, Signal)
+  SignalRemovedChange(UInt, Signal)
+  SignalModifiedChange(UInt, String, Signal, Signal)
+  ValueTableAddedChange(ValueTable)
+  ValueTableRemovedChange(ValueTable)
+  ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum DecodeError {
   InvalidSignalLayout(Int, Int)
@@ -82,6 +97,12 @@ pub(all) struct Message {
 } derive(Eq, @debug.Debug)
 pub fn Message::decode_frame(Self, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Message::find_signal(Self, StringView) -> Signal?
+
+pub(all) struct MessageMetadata {
+  name : String
+  payload_size : Int
+  transmitter : String
+} derive(Eq, @debug.Debug)
 
 pub(all) enum MultiplexRole {
   Plain
