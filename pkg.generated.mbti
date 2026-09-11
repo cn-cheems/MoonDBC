@@ -48,6 +48,7 @@ pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, F
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
+pub fn Database::generate_moonbit_constants(Self) -> String
 pub fn Database::validate(Self) -> Array[ValidationIssue]
 pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
 

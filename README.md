@@ -23,6 +23,7 @@ Run the example and tests with the current MoonBit toolchain:
 
 ```text
 moon run cmd/main
+moon run cmd/codegen
 moon check --target wasm --deny-warn
 moon test --target wasm --deny-warn
 ```
@@ -41,13 +42,13 @@ moon test --target wasm --deny-warn
 - semantic validation for frame bounds, overlaps, scaling, and multiplexing;
 - deterministic model comparison for messages, signals, and value tables;
 - compatibility impact classification and deterministic Markdown change reports;
+- standalone MoonBit constant generation for static CAN metadata;
 - recoverable diagnostics for malformed and misplaced declarations;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 
 ## Roadmap
 
-- MoonBit source generation from DBC models;
 - native CLI and browser workbench.
 
 ## Project origin
