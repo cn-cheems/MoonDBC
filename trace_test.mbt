@@ -21,6 +21,7 @@ test "decode valid trace lines and skip comments" {
   assert_eq(result.frames[0].line, 2)
   assert_eq(result.frames[0].timestamp, None)
   assert_eq(result.frames[0].interface_name, None)
+  assert_eq(result.frames[0].fd_flags, None)
   assert_eq(result.frames[0].decoded.signals[0].physical, 250.0)
   assert_eq(result.frames[1].line, 4)
   assert_eq(result.frames[1].decoded.signals[0].label, Some("On"))
@@ -80,14 +81,14 @@ test "export decoded trace values as CSV" {
         #|VAL_ 291 State 0 "Off" 1 "On, ready";
       ),
     ).database
-  let result = database.decode_trace("(1697042645.5) can0 123#F40101")
+  let result = database.decode_trace("(1697042645.5) can0 123##1F40101")
   assert_eq(
     result.to_csv(),
     Ok(
       [
-        "line,timestamp,interface,frame,message,signal,raw,physical,unit,label",
-        "1,\"1697042645.5\",\"can0\",123#F40101,\"Status\",\"Speed\",500,250,\"km/h\",\"\"",
-        "1,\"1697042645.5\",\"can0\",123#F40101,\"Status\",\"State\",1,1,\"\",\"On, ready\"",
+        "line,timestamp,interface,fd_flags,frame,message,signal,raw,physical,unit,label",
+        "1,\"1697042645.5\",\"can0\",1,123##1F40101,\"Status\",\"Speed\",500,250,\"km/h\",\"\"",
+        "1,\"1697042645.5\",\"can0\",1,123##1F40101,\"Status\",\"State\",1,1,\"\",\"On, ready\"",
       ].join("\r\n"),
     ),
   )
@@ -101,6 +102,7 @@ test "escape quotes in CSV text fields" {
         line: 7,
         timestamp: None,
         interface_name: None,
+        fd_flags: None,
         frame: { id: 1U, payload: b"\x01", },
         decoded: {
           id: 1U,
@@ -123,8 +125,8 @@ test "escape quotes in CSV text fields" {
     result.to_csv(),
     Ok(
       [
-        "line,timestamp,interface,frame,message,signal,raw,physical,unit,label",
-        "7,\"\",\"\",001#01,\"Motor \"\"A\"\"\",\"State\",1,1,\"\",\"Ready \"\"now\"\"\"",
+        "line,timestamp,interface,fd_flags,frame,message,signal,raw,physical,unit,label",
+        "7,\"\",\"\",,001#01,\"Motor \"\"A\"\"\",\"State\",1,1,\"\",\"Ready \"\"now\"\"\"",
       ].join("\r\n"),
     ),
   )
@@ -135,7 +137,9 @@ test "export an empty trace with a CSV header" {
   let result : @moondbc.TraceDecodeResult = { frames: [], diagnostics: [], }
   assert_eq(
     result.to_csv(),
-    Ok("line,timestamp,interface,frame,message,signal,raw,physical,unit,label"),
+    Ok(
+      "line,timestamp,interface,fd_flags,frame,message,signal,raw,physical,unit,label",
+    ),
   )
 }
 
@@ -147,6 +151,7 @@ test "report invalid frames during CSV export" {
         line: 1,
         timestamp: None,
         interface_name: None,
+        fd_flags: None,
         frame: { id: 0x20000000U, payload: b"", },
         decoded: { id: 0x20000000U, name: "Invalid", signals: [], },
       },
@@ -155,6 +160,10 @@ test "report invalid frames during CSV export" {
   }
   assert_eq(
     result.to_csv(),
-    Err(@moondbc.CanFrameIdentifierOutOfRange(0x20000000U)),
+    Err(
+      @moondbc.CanLogFrameTextError(
+        @moondbc.CanFrameIdentifierOutOfRange(0x20000000U),
+      ),
+    ),
   )
 }

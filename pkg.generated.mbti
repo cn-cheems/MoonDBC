@@ -40,6 +40,7 @@ pub(all) enum CanFrameTextError {
 pub(all) struct CanLogRecord {
   timestamp : String?
   interface_name : String?
+  fd_flags : Byte?
   frame : CanFrame
 } derive(Eq, @debug.Debug)
 pub fn CanLogRecord::to_text(Self) -> Result[String, CanLogTextError]
@@ -48,6 +49,9 @@ pub(all) enum CanLogTextError {
   CanLogInvalidFieldCount(Int)
   CanLogInvalidTimestamp(String)
   CanLogInvalidInterface(String)
+  CanLogMissingFdFlags
+  CanLogInvalidFdFlags(String)
+  CanLogFdFlagsOutOfRange(Int)
   CanLogTimestampWithoutInterface
   CanLogFrameTextError(CanFrameTextError)
 } derive(Eq, @debug.Debug)
@@ -140,6 +144,7 @@ pub(all) struct DecodedTraceFrame {
   line : Int
   timestamp : String?
   interface_name : String?
+  fd_flags : Byte?
   frame : CanFrame
   decoded : DecodedMessage
 } derive(Eq, @debug.Debug)
@@ -247,7 +252,7 @@ pub(all) struct TraceDecodeResult {
   diagnostics : Array[TraceDiagnostic]
 } derive(Eq, @debug.Debug)
 pub fn TraceDecodeResult::is_valid(Self) -> Bool
-pub fn TraceDecodeResult::to_csv(Self) -> Result[String, CanFrameTextError]
+pub fn TraceDecodeResult::to_csv(Self) -> Result[String, CanLogTextError]
 
 pub(all) struct TraceDiagnostic {
   line : Int

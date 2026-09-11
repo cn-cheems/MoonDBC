@@ -17,6 +17,7 @@ pub(all) struct DecodedTraceFrame {
   line : Int
   timestamp : String?
   interface_name : String?
+  fd_flags : Byte?
   frame : CanFrame
   decoded : DecodedMessage
 } derive(Eq, Debug)
@@ -75,6 +76,7 @@ pub fn Database::decode_trace(
               line: line_number,
               timestamp: record.timestamp,
               interface_name: record.interface_name,
+              fd_flags: record.fd_flags,
               frame: record.frame,
               decoded,
             })
@@ -122,22 +124,31 @@ fn trace_optional_text(value : String?) -> String {
 }
 
 ///|
+fn trace_fd_flags_text(value : Byte?) -> String {
+  match value {
+    Some(flags) => flags.to_int().to_string(radix=16).to_upper()
+    None => ""
+  }
+}
+
+///|
 /// Export successfully decoded trace signals as RFC 4180-style CSV rows.
 /// Text fields are always quoted and embedded quotes are doubled.
 pub fn TraceDecodeResult::to_csv(
   self : TraceDecodeResult,
-) -> Result[String, CanFrameTextError] {
+) -> Result[String, CanLogTextError] {
   let lines = [
-    "line,timestamp,interface,frame,message,signal,raw,physical,unit,label",
+    "line,timestamp,interface,fd_flags,frame,message,signal,raw,physical,unit,label",
   ]
   for record in self.frames {
-    let frame_text = match record.frame.to_text() {
+    let frame_text = match
+      can_log_frame_to_text(record.frame, record.fd_flags) {
       Ok(value) => value
       Err(error) => return Err(error)
     }
     for signal in record.decoded.signals {
       lines.push(
-        "\{record.line},\{trace_csv_text(trace_optional_text(record.timestamp))},\{trace_csv_text(trace_optional_text(record.interface_name))},\{frame_text},\{trace_csv_text(record.decoded.name)},\{trace_csv_text(signal.name)},\{trace_raw_text(signal.raw)},\{signal.physical},\{trace_csv_text(signal.unit)},\{trace_csv_text(trace_label_text(signal.label))}",
+        "\{record.line},\{trace_csv_text(trace_optional_text(record.timestamp))},\{trace_csv_text(trace_optional_text(record.interface_name))},\{trace_fd_flags_text(record.fd_flags)},\{frame_text},\{trace_csv_text(record.decoded.name)},\{trace_csv_text(signal.name)},\{trace_raw_text(signal.raw)},\{signal.physical},\{trace_csv_text(signal.unit)},\{trace_csv_text(trace_label_text(signal.label))}",
       )
     }
   }
