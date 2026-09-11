@@ -10,6 +10,7 @@ fn main {
     #|VAL_ 256 Gear 0 "Neutral" 1 "Drive" 2 "Reverse";
   let result = @moondbc.parse(source)
   println("MoonDBC parsed \{result.database.messages.length()} message(s)")
+  println("validation issues: \{result.database.validate().length()}")
   let payload = b"\x40\x1f\x00\x00\x00\x00\x00\x00"
   for message in result.database.messages {
     println(

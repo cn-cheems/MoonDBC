@@ -38,13 +38,14 @@ moon test --target wasm --deny-warn
 - type, width, frame, scale, and physical range validation;
 - message-level frame decoding with multiplex selector dispatch;
 - automatic enrichment of decoded values with `VAL_` labels;
+- semantic validation for frame bounds, overlaps, scaling, and multiplexing;
 - recoverable diagnostics for malformed and misplaced declarations;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 
 ## Roadmap
 
-- DBC consistency checks and model comparison;
+- DBC model comparison and change reports;
 - MoonBit source generation from DBC models;
 - native CLI and browser workbench.
 
