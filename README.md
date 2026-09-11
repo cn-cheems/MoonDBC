@@ -40,13 +40,13 @@ moon test --target wasm --deny-warn
 - automatic enrichment of decoded values with `VAL_` labels;
 - semantic validation for frame bounds, overlaps, scaling, and multiplexing;
 - deterministic model comparison for messages, signals, and value tables;
+- compatibility impact classification and deterministic Markdown change reports;
 - recoverable diagnostics for malformed and misplaced declarations;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 
 ## Roadmap
 
-- human-readable DBC change reports;
 - MoonBit source generation from DBC models;
 - native CLI and browser workbench.
 

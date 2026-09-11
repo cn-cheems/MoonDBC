@@ -14,6 +14,8 @@ fn main {
   println(
     "self comparison changes: \{result.database.diff(result.database).length()}",
   )
+  let report = result.database.compatibility_report(result.database)
+  println("backward compatible: \{report.is_backward_compatible()}")
   let payload = b"\x40\x1f\x00\x00\x00\x00\x00\x00"
   for message in result.database.messages {
     println(

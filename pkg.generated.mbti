@@ -16,12 +16,34 @@ pub(all) enum ByteOrder {
   Intel
 } derive(Eq, @debug.Debug)
 
+pub(all) enum ChangeImpact {
+  Breaking
+  NonBreaking
+  Informational
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ClassifiedChange {
+  impact : ChangeImpact
+  change : DatabaseChange
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CompatibilityReport {
+  changes : Array[ClassifiedChange]
+  breaking_count : Int
+  non_breaking_count : Int
+  informational_count : Int
+} derive(Eq, @debug.Debug)
+pub fn CompatibilityReport::has_changes(Self) -> Bool
+pub fn CompatibilityReport::is_backward_compatible(Self) -> Bool
+pub fn CompatibilityReport::to_markdown(Self) -> String
+
 pub(all) struct Database {
   version : String?
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
 } derive(Eq, @debug.Debug)
+pub fn Database::compatibility_report(Self, Self) -> CompatibilityReport
 pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
 pub fn Database::find_message(Self, UInt) -> Message?
@@ -42,6 +64,8 @@ pub(all) enum DatabaseChange {
   ValueTableRemovedChange(ValueTable)
   ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
 } derive(Eq, @debug.Debug)
+pub fn DatabaseChange::impact(Self) -> ChangeImpact
+pub fn DatabaseChange::summary(Self) -> String
 
 pub(all) enum DecodeError {
   InvalidSignalLayout(Int, Int)
