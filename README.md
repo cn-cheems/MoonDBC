@@ -36,13 +36,14 @@ moon test --target wasm --deny-warn
 - signed value extension and factor/offset conversion;
 - raw and physical signal encoding without mutating the input payload;
 - type, width, frame, scale, and physical range validation;
+- message-level frame decoding with multiplex selector dispatch;
+- automatic enrichment of decoded values with `VAL_` labels;
 - recoverable diagnostics for malformed and misplaced declarations;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 
 ## Roadmap
 
-- multiplexed message dispatch;
 - DBC consistency checks and model comparison;
 - MoonBit source generation from DBC models;
 - native CLI and browser workbench.

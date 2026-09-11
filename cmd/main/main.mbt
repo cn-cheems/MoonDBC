@@ -10,6 +10,7 @@ fn main {
     #|VAL_ 256 Gear 0 "Neutral" 1 "Drive" 2 "Reverse";
   let result = @moondbc.parse(source)
   println("MoonDBC parsed \{result.database.messages.length()} message(s)")
+  let payload = b"\x40\x1f\x00\x00\x00\x00\x00\x00"
   for message in result.database.messages {
     println(
       "id=\{message.id} \{message.name}: \{message.signals.length()} signal(s)",
@@ -19,17 +20,18 @@ fn main {
         "  \{signal.name} start=\{signal.start_bit} length=\{signal.bit_length} unit=\{signal.unit}",
       )
     }
-    match message.find_signal("EngineSpeed") {
-      Some(signal) =>
-        match signal.decode(b"\x40\x1f\x00\x00\x00\x00\x00\x00") {
-          Ok(value) => println("  decoded EngineSpeed=\{value} rpm")
-          Err(_) => println("  unable to decode EngineSpeed")
+    match result.database.decode_frame(message.id, payload) {
+      Ok(decoded) =>
+        for signal in decoded.signals {
+          match signal.label {
+            Some(label) => println("  decoded \{signal.name}=\{label}")
+            None =>
+              println(
+                "  decoded \{signal.name}=\{signal.physical} \{signal.unit}",
+              )
+          }
         }
-      None => ()
-    }
-    match result.database.value_label(message.id, "Gear", 0L) {
-      Some(label) => println("  Gear=\{label}")
-      None => ()
+      Err(_) => println("  unable to decode frame")
     }
   }
   for diagnostic in result.diagnostics {

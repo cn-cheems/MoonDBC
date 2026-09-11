@@ -22,6 +22,7 @@ pub(all) struct Database {
   messages : Array[Message]
   value_tables : Array[ValueTable]
 } derive(Eq, @debug.Debug)
+pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
@@ -29,6 +30,20 @@ pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
 pub(all) enum DecodeError {
   InvalidSignalLayout(Int, Int)
   FrameTooShort(Int, Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DecodedMessage {
+  id : UInt
+  name : String
+  signals : Array[DecodedSignal]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DecodedSignal {
+  name : String
+  raw : RawValue
+  physical : Double
+  unit : String
+  label : String?
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Diagnostic {
@@ -49,6 +64,14 @@ pub(all) enum EncodeError {
   PhysicalRawOutOfRange(Double, Int)
 } derive(Eq, @debug.Debug)
 
+pub(all) enum FrameDecodeError {
+  UnknownMessage(UInt)
+  PayloadTooShort(Int, Int)
+  MissingMultiplexer
+  MultipleMultiplexers
+  SignalDecodeFailed(String, DecodeError)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct Message {
   id : UInt
   name : String
@@ -56,6 +79,7 @@ pub(all) struct Message {
   transmitter : String
   signals : Array[Signal]
 } derive(Eq, @debug.Debug)
+pub fn Message::decode_frame(Self, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Message::find_signal(Self, StringView) -> Signal?
 
 pub(all) enum MultiplexRole {
