@@ -212,6 +212,48 @@ fn write_value_table(
 }
 
 ///|
+fn escape_dbc_comment(text : String) -> Result[String, DbcWriteError] {
+  let chars : Array[Char] = []
+  for char in text.iter() {
+    if char == '\r' || char == '\n' {
+      return Err(DbcWriteInvalidQuotedText("comment", text))
+    }
+    if char == '"' || char == '\\' {
+      chars.push('\\')
+    }
+    chars.push(char)
+  }
+  Ok(String::from_array(chars))
+}
+
+///|
+fn write_comment(comment : DbcComment) -> Result[String, DbcWriteError] {
+  let prefix = match comment.target {
+    DatabaseComment => "CM_"
+    NodeComment(node) => {
+      match check_dbc_token("comment node", node) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
+      "CM_ BU_ \{node}"
+    }
+    MessageComment(message_id) => "CM_ BO_ \{message_id}"
+    SignalComment(message_id, signal_name) => {
+      match check_dbc_token("comment signal", signal_name) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
+      "CM_ SG_ \{message_id} \{signal_name}"
+    }
+  }
+  let text = match escape_dbc_comment(comment.text) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  Ok("\{prefix} \"\{text}\";")
+}
+
+///|
 /// Write the supported database model as deterministic DBC text. Structurally
 /// invalid models should be checked with `Database::validate` before export;
 /// this method reports values that cannot be represented by the parser syntax.
@@ -239,7 +281,9 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   } else {
     lines.push("BU_: \{self.nodes.join(" ")}")
   }
-  if !self.messages.is_empty() {
+  if !self.messages.is_empty() ||
+    !self.comments.is_empty() ||
+    !self.value_tables.is_empty() {
     lines.push("")
   }
   for index, message in self.messages {
@@ -247,9 +291,20 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       Err(error) => return Err(error)
       Ok(_) => ()
     }
-    if index + 1 < self.messages.length() || !self.value_tables.is_empty() {
+    if index + 1 < self.messages.length() ||
+      !self.comments.is_empty() ||
+      !self.value_tables.is_empty() {
       lines.push("")
     }
+  }
+  for comment in self.comments {
+    match write_comment(comment) {
+      Err(error) => return Err(error)
+      Ok(line) => lines.push(line)
+    }
+  }
+  if !self.comments.is_empty() && !self.value_tables.is_empty() {
+    lines.push("")
   }
   for index, table in self.value_tables {
     match write_value_table(lines, table) {

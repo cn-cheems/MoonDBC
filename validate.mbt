@@ -11,6 +11,10 @@ pub(all) enum ValidationIssue {
   MissingMultiplexerIssue(UInt, String)
   MultiplexSelectorOutOfRangeIssue(UInt, String, Int)
   OverlappingSignalsIssue(UInt, String, String)
+  DuplicateCommentIssue(DbcCommentTarget)
+  UnknownCommentNodeIssue(String)
+  UnknownCommentMessageIssue(UInt)
+  UnknownCommentSignalIssue(UInt, String)
 } derive(Eq, Debug)
 
 ///|
@@ -211,9 +215,50 @@ fn validate_message(message : Message, issues : Array[ValidationIssue]) -> Unit 
 }
 
 ///|
+fn validate_comments(
+  database : Database,
+  issues : Array[ValidationIssue],
+) -> Unit {
+  for index, comment in database.comments {
+    for previous = 0; previous < index; previous = previous + 1 {
+      if database.comments[previous].target == comment.target {
+        issues.push(DuplicateCommentIssue(comment.target))
+      }
+    }
+    match comment.target {
+      DatabaseComment => ()
+      NodeComment(node) => {
+        let mut found = false
+        for candidate in database.nodes {
+          if candidate == node {
+            found = true
+          }
+        }
+        if !found {
+          issues.push(UnknownCommentNodeIssue(node))
+        }
+      }
+      MessageComment(message_id) =>
+        if database.find_message(message_id) is None {
+          issues.push(UnknownCommentMessageIssue(message_id))
+        }
+      SignalComment(message_id, signal_name) =>
+        match database.find_message(message_id) {
+          None => issues.push(UnknownCommentMessageIssue(message_id))
+          Some(message) =>
+            if message.find_signal(signal_name) is None {
+              issues.push(UnknownCommentSignalIssue(message_id, signal_name))
+            }
+        }
+    }
+  }
+}
+
+///|
 /// Validate cross-field and bit-layout constraints that are not syntax errors.
 pub fn Database::validate(self : Database) -> Array[ValidationIssue] {
   let issues : Array[ValidationIssue] = []
+  validate_comments(self, issues)
   for index, message in self.messages {
     for previous = 0; previous < index; previous = previous + 1 {
       if self.messages[previous].id == message.id {

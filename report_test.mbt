@@ -117,3 +117,14 @@ test "change impact covers signal and value table updates" {
     @moondbc.Breaking,
   )
 }
+
+///|
+test "comment changes are informational" {
+  let comment : @moondbc.DbcComment = {
+    target: @moondbc.MessageComment(506U),
+    text: "Diagnostic frame",
+  }
+  let change = @moondbc.CommentAddedChange(comment)
+  assert_eq(change.impact(), @moondbc.Informational)
+  assert_eq(change.summary(), "Comment for message 506 was added.")
+}

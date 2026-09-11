@@ -39,6 +39,37 @@ test "compare global and message metadata" {
 }
 
 ///|
+test "compare added removed and modified comments" {
+  let before = @moondbc.parse(
+      (
+        #|BU_: ECU
+        #|BO_ 410 Status: 1 ECU
+        #| SG_ State : 0|8@1+ (1,0) [0|1] "" ECU
+        #|CM_ "Old database note";
+        #|CM_ BO_ 410 "Legacy message note";
+      ),
+    ).database
+  let after = @moondbc.parse(
+      (
+        #|BU_: ECU
+        #|BO_ 410 Status: 1 ECU
+        #| SG_ State : 0|8@1+ (1,0) [0|1] "" ECU
+        #|CM_ "New database note";
+        #|CM_ SG_ 410 State "Signal note";
+      ),
+    ).database
+  assert_eq(before.diff(after), [
+    @moondbc.CommentModifiedChange(
+      @moondbc.DatabaseComment,
+      "Old database note",
+      "New database note",
+    ),
+    @moondbc.CommentRemovedChange(before.comments[1]),
+    @moondbc.CommentAddedChange(after.comments[1]),
+  ])
+}
+
+///|
 test "compare added removed and modified signals" {
   let before = @moondbc.parse(
       (

@@ -57,11 +57,26 @@ pub(all) struct ValueTable {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum DbcCommentTarget {
+  DatabaseComment
+  NodeComment(String)
+  MessageComment(UInt)
+  SignalComment(UInt, String)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct DbcComment {
+  target : DbcCommentTarget
+  text : String
+} derive(Eq, Debug)
+
+///|
 pub(all) struct Database {
   version : String?
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
+  comments : Array[DbcComment]
 } derive(Eq, Debug)
 
 ///|
@@ -115,6 +130,55 @@ pub fn Database::find_value_table(
     }
   }
   None
+}
+
+///|
+pub fn Database::find_comment(
+  self : Database,
+  target : DbcCommentTarget,
+) -> DbcComment? {
+  for comment in self.comments {
+    if comment.target == target {
+      return Some(comment)
+    }
+  }
+  None
+}
+
+///|
+pub fn Database::database_comment(self : Database) -> String? {
+  match self.find_comment(DatabaseComment) {
+    Some(comment) => Some(comment.text)
+    None => None
+  }
+}
+
+///|
+pub fn Database::node_comment(self : Database, name : StringView) -> String? {
+  match self.find_comment(NodeComment(name.to_owned())) {
+    Some(comment) => Some(comment.text)
+    None => None
+  }
+}
+
+///|
+pub fn Database::message_comment(self : Database, id : UInt) -> String? {
+  match self.find_comment(MessageComment(id)) {
+    Some(comment) => Some(comment.text)
+    None => None
+  }
+}
+
+///|
+pub fn Database::signal_comment(
+  self : Database,
+  message_id : UInt,
+  signal_name : StringView,
+) -> String? {
+  match self.find_comment(SignalComment(message_id, signal_name.to_owned())) {
+    Some(comment) => Some(comment.text)
+    None => None
+  }
 }
 
 ///|

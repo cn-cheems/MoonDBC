@@ -43,7 +43,11 @@ fn impact_label(impact : ChangeImpact) -> String {
 /// require consumers to review or update their assumptions.
 pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
   match self {
-    VersionChangedChange(_, _) | NodesChangedChange(_, _) => Informational
+    VersionChangedChange(_, _)
+    | NodesChangedChange(_, _)
+    | CommentAddedChange(_)
+    | CommentRemovedChange(_)
+    | CommentModifiedChange(_, _, _) => Informational
     MessageAddedChange(_)
     | SignalAddedChange(_, _)
     | ValueTableAddedChange(_) => NonBreaking
@@ -57,6 +61,17 @@ pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
 }
 
 ///|
+fn comment_target_text(target : DbcCommentTarget) -> String {
+  match target {
+    DatabaseComment => "the database"
+    NodeComment(node) => "node \{node}"
+    MessageComment(message_id) => "message \{message_id}"
+    SignalComment(message_id, signal_name) =>
+      "signal \{signal_name} in message \{message_id}"
+  }
+}
+
+///|
 /// Render a concise sentence suitable for logs, reviews, and release notes.
 pub fn DatabaseChange::summary(self : DatabaseChange) -> String {
   match self {
@@ -64,6 +79,12 @@ pub fn DatabaseChange::summary(self : DatabaseChange) -> String {
       "DBC version changed from \{version_text(before)} to \{version_text(after)}."
     NodesChangedChange(before, after) =>
       "Node list changed (\{before.length()} -> \{after.length()})."
+    CommentAddedChange(comment) =>
+      "Comment for \{comment_target_text(comment.target)} was added."
+    CommentRemovedChange(comment) =>
+      "Comment for \{comment_target_text(comment.target)} was removed."
+    CommentModifiedChange(target, _, _) =>
+      "Comment for \{comment_target_text(target)} was modified."
     MessageAddedChange(message) =>
       "Message \{message.id} (\{message.name}) was added."
     MessageRemovedChange(message) =>

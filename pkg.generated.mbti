@@ -82,16 +82,22 @@ pub(all) struct Database {
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
+  comments : Array[DbcComment]
 } derive(Eq, @debug.Debug)
 pub fn Database::compatibility_report(Self, Self) -> CompatibilityReport
+pub fn Database::database_comment(Self) -> String?
 pub fn Database::decode_can_frame(Self, CanFrame) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::decode_trace(Self, StringView) -> TraceDecodeResult
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
 pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
+pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::generate_moonbit_constants(Self) -> String
+pub fn Database::message_comment(Self, UInt) -> String?
+pub fn Database::node_comment(Self, StringView) -> String?
+pub fn Database::signal_comment(Self, UInt, StringView) -> String?
 pub fn Database::to_dbc(Self) -> Result[String, DbcWriteError]
 pub fn Database::validate(Self) -> Array[ValidationIssue]
 pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
@@ -99,6 +105,9 @@ pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
 pub(all) enum DatabaseChange {
   VersionChangedChange(String?, String?)
   NodesChangedChange(Array[String], Array[String])
+  CommentAddedChange(DbcComment)
+  CommentRemovedChange(DbcComment)
+  CommentModifiedChange(DbcCommentTarget, String, String)
   MessageAddedChange(Message)
   MessageRemovedChange(Message)
   MessageMetadataChangedChange(UInt, MessageMetadata, MessageMetadata)
@@ -111,6 +120,18 @@ pub(all) enum DatabaseChange {
 } derive(Eq, @debug.Debug)
 pub fn DatabaseChange::impact(Self) -> ChangeImpact
 pub fn DatabaseChange::summary(Self) -> String
+
+pub(all) struct DbcComment {
+  target : DbcCommentTarget
+  text : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DbcCommentTarget {
+  DatabaseComment
+  NodeComment(String)
+  MessageComment(UInt)
+  SignalComment(UInt, String)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum DbcWriteError {
   DbcWriteInvalidToken(String, String)
@@ -278,6 +299,10 @@ pub(all) enum ValidationIssue {
   MissingMultiplexerIssue(UInt, String)
   MultiplexSelectorOutOfRangeIssue(UInt, String, Int)
   OverlappingSignalsIssue(UInt, String, String)
+  DuplicateCommentIssue(DbcCommentTarget)
+  UnknownCommentNodeIssue(String)
+  UnknownCommentMessageIssue(UInt)
+  UnknownCommentSignalIssue(UInt, String)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct ValueDescription {

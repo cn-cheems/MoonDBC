@@ -120,6 +120,7 @@ test "generated identifiers are normalized and stable" {
       },
     ],
     value_tables: [],
+    comments: [],
   }
   let generated = database.generate_moonbit_constants()
   assert_eq(
@@ -151,6 +152,7 @@ test "empty databases still generate a valid source header" {
     nodes: [],
     messages: [],
     value_tables: [],
+    comments: [],
   }
   assert_eq(
     database.generate_moonbit_constants(),

@@ -9,6 +9,9 @@ pub(all) struct MessageMetadata {
 pub(all) enum DatabaseChange {
   VersionChangedChange(String?, String?)
   NodesChangedChange(Array[String], Array[String])
+  CommentAddedChange(DbcComment)
+  CommentRemovedChange(DbcComment)
+  CommentModifiedChange(DbcCommentTarget, String, String)
   MessageAddedChange(Message)
   MessageRemovedChange(Message)
   MessageMetadataChangedChange(UInt, MessageMetadata, MessageMetadata)
@@ -26,6 +29,34 @@ fn message_metadata(message : Message) -> MessageMetadata {
     name: message.name,
     payload_size: message.payload_size,
     transmitter: message.transmitter,
+  }
+}
+
+///|
+fn diff_comments(
+  before : Database,
+  after : Database,
+  changes : Array[DatabaseChange],
+) -> Unit {
+  for comment in before.comments {
+    match after.find_comment(comment.target) {
+      None => changes.push(CommentRemovedChange(comment))
+      Some(after_comment) =>
+        if comment.text != after_comment.text {
+          changes.push(
+            CommentModifiedChange(
+              comment.target,
+              comment.text,
+              after_comment.text,
+            ),
+          )
+        }
+    }
+  }
+  for comment in after.comments {
+    if before.find_comment(comment.target) is None {
+      changes.push(CommentAddedChange(comment))
+    }
   }
 }
 
@@ -113,6 +144,7 @@ pub fn Database::diff(
   if self.nodes != newer.nodes {
     changes.push(NodesChangedChange(self.nodes, newer.nodes))
   }
+  diff_comments(self, newer, changes)
   for message in self.messages {
     match newer.find_message(message.id) {
       None => changes.push(MessageRemovedChange(message))

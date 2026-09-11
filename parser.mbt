@@ -47,6 +47,13 @@ priv struct PendingValueTable {
 }
 
 ///|
+priv struct PendingDbcComment {
+  line : Int
+  target : DbcCommentTarget
+  text : String
+}
+
+///|
 fn find_after(text : StringView, start : Int, needle : StringView) -> Int? {
   if start < 0 || start > text.length() {
     return None
@@ -257,6 +264,77 @@ fn parse_version_line(line : StringView) -> String? {
 }
 
 ///|
+fn parse_comment_text(text : StringView) -> Result[String, String] {
+  let chars : Array[Char] = []
+  let mut escaped = false
+  let mut closed = false
+  for char in text.iter() {
+    if closed {
+      return Err("comment has text after its closing quote")
+    }
+    if escaped {
+      if char == '"' || char == '\\' {
+        chars.push(char)
+      } else {
+        chars.push('\\')
+        chars.push(char)
+      }
+      escaped = false
+    } else if char == '\\' {
+      escaped = true
+    } else if char == '"' {
+      closed = true
+    } else {
+      chars.push(char)
+    }
+  }
+  if escaped || !closed {
+    Err("comment is missing a closing quote")
+  } else {
+    Ok(String::from_array(chars))
+  }
+}
+
+///|
+fn parse_comment_line(
+  line : StringView,
+) -> Result[(DbcCommentTarget, String), String] {
+  let body = line[3:].trim()
+  if !body.has_suffix(";") {
+    return Err("comment declaration is missing ';'")
+  }
+  let content = body[:body.length() - 1].trim()
+  let open_quote = match content.find("\"") {
+    Some(value) => value
+    None => return Err("comment is missing an opening quote")
+  }
+  let text = match parse_comment_text(content[open_quote + 1:]) {
+    Ok(value) => value
+    Err(message) => return Err(message)
+  }
+  let header = words(content[:open_quote])
+  let target = match header {
+    [] => DatabaseComment
+    [kind, node] if kind == "BU_" => NodeComment(node.to_owned())
+    [kind, message_id] if kind == "BO_" =>
+      match parse_uint(message_id) {
+        Some(value) => MessageComment(value)
+        None => return Err("message comment id is not an unsigned integer")
+      }
+    [kind, message_id, signal] if kind == "SG_" => {
+      let id = match parse_uint(message_id) {
+        Some(value) => value
+        None =>
+          return Err("signal comment message id is not an unsigned integer")
+      }
+      SignalComment(id, signal.to_owned())
+    }
+    _ => return Err("comment target must be the database, BU_, BO_, or SG_")
+  }
+  Ok((target, text))
+}
+
+///|
 fn contains_value_description(
   entries : Array[ValueDescription],
   value : Int64,
@@ -374,6 +452,19 @@ fn contains_value_table(
 }
 
 ///|
+fn contains_comment_target(
+  comments : Array[DbcComment],
+  target : DbcCommentTarget,
+) -> Bool {
+  for comment in comments {
+    if comment.target == target {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn add_diagnostic(
   diagnostics : Array[Diagnostic],
   line : Int,
@@ -391,6 +482,8 @@ pub fn parse(source : StringView) -> ParseResult {
   let nodes : Array[String] = []
   let pending_value_tables : Array[PendingValueTable] = []
   let value_tables : Array[ValueTable] = []
+  let pending_comments : Array[PendingDbcComment] = []
+  let comments : Array[DbcComment] = []
   let diagnostics : Array[Diagnostic] = []
   let mut version : String? = None
   let mut current_message : Int? = None
@@ -460,6 +553,13 @@ pub fn parse(source : StringView) -> ParseResult {
               add_diagnostic(diagnostics, line_number, "DBC005", message)
           }
       }
+    } else if line.has_prefix("CM_ ") {
+      match parse_comment_line(line) {
+        Ok((target, text)) =>
+          pending_comments.push({ line: line_number, target, text, })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC011", message)
+      }
     } else if line.has_prefix("VAL_ ") {
       match parse_value_line(line) {
         Ok((message_id, signal_name, entries)) =>
@@ -513,5 +613,73 @@ pub fn parse(source : StringView) -> ParseResult {
       }
     }
   }
-  { database: { version, nodes, messages, value_tables, }, diagnostics, }
+  for pending in pending_comments {
+    let target_exists = match pending.target {
+      DatabaseComment => true
+      NodeComment(name) =>
+        if contains_node(nodes, name) {
+          true
+        } else {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC012",
+            "comment refers to an unknown node",
+          )
+          false
+        }
+      MessageComment(message_id) =>
+        if find_message_index(messages, message_id) is Some(_) {
+          true
+        } else {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC013",
+            "comment refers to an unknown message",
+          )
+          false
+        }
+      SignalComment(message_id, signal_name) =>
+        match find_message_index(messages, message_id) {
+          None => {
+            add_diagnostic(
+              diagnostics,
+              pending.line,
+              "DBC013",
+              "comment refers to an unknown message",
+            )
+            false
+          }
+          Some(message_index) =>
+            if contains_signal_name(messages[message_index], signal_name) {
+              true
+            } else {
+              add_diagnostic(
+                diagnostics,
+                pending.line,
+                "DBC014",
+                "comment refers to an unknown signal",
+              )
+              false
+            }
+        }
+    }
+    if target_exists {
+      if contains_comment_target(comments, pending.target) {
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC015",
+          "duplicate comment for the same target",
+        )
+      } else {
+        comments.push({ target: pending.target, text: pending.text, })
+      }
+    }
+  }
+  {
+    database: { version, nodes, messages, value_tables, comments, },
+    diagnostics,
+  }
 }
