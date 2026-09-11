@@ -16,6 +16,7 @@ fn main {
   )
   let report = result.database.compatibility_report(result.database)
   println("backward compatible: \{report.is_backward_compatible()}")
+  println("canonical DBC length: \{result.database.to_dbc().unwrap().length()}")
   let payload = result.database
     .encode_frame(256U, [
       { name: "EngineSpeed", physical: 1000.0, },

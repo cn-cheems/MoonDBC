@@ -50,6 +50,7 @@ pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Byt
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::generate_moonbit_constants(Self) -> String
+pub fn Database::to_dbc(Self) -> Result[String, DbcWriteError]
 pub fn Database::validate(Self) -> Array[ValidationIssue]
 pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
 
@@ -68,6 +69,15 @@ pub(all) enum DatabaseChange {
 } derive(Eq, @debug.Debug)
 pub fn DatabaseChange::impact(Self) -> ChangeImpact
 pub fn DatabaseChange::summary(Self) -> String
+
+pub(all) enum DbcWriteError {
+  DbcWriteInvalidToken(String, String)
+  DbcWriteInvalidQuotedText(String, String)
+  DbcWriteInvalidPayloadSize(UInt, Int)
+  DbcWriteNonFiniteSignalNumber(UInt, String, String)
+  DbcWriteNegativeMultiplexValue(UInt, String, Int)
+  DbcWriteEmptyValueTable(UInt, String)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum DecodeError {
   InvalidSignalLayout(Int, Int)
