@@ -1,6 +1,7 @@
 ///|
 pub(all) enum TraceError {
   TraceFrameTextError(CanFrameTextError)
+  TraceCanLogTextError(CanLogTextError)
   TraceFrameDecodeError(FrameDecodeError)
 } derive(Eq, Debug)
 
@@ -14,6 +15,8 @@ pub(all) struct TraceDiagnostic {
 ///|
 pub(all) struct DecodedTraceFrame {
   line : Int
+  timestamp : String?
+  interface_name : String?
   frame : CanFrame
   decoded : DecodedMessage
 } derive(Eq, Debug)
@@ -30,9 +33,9 @@ pub fn TraceDecodeResult::is_valid(self : TraceDecodeResult) -> Bool {
 }
 
 ///|
-/// Decode compact SocketCAN frames line by line. Blank lines and lines starting
-/// with `//` are ignored. Invalid or undecodable lines are retained as
-/// diagnostics without preventing later frames from being processed.
+/// Decode compact SocketCAN frames or candump records line by line. Blank lines
+/// and lines starting with `//` are ignored. Invalid or undecodable lines are
+/// retained as diagnostics without preventing later records from being processed.
 pub fn Database::decode_trace(
   self : Database,
   source : StringView,
@@ -46,22 +49,35 @@ pub fn Database::decode_trace(
     if line.is_empty() || line.has_prefix("//") {
       continue
     }
-    match parse_can_frame(line) {
-      Err(error) =>
+    match parse_can_log_record(line) {
+      Err(CanLogFrameTextError(error)) =>
         diagnostics.push({
           line: line_number,
           text: line.to_owned(),
           error: TraceFrameTextError(error),
         })
-      Ok(frame) =>
-        match self.decode_can_frame(frame) {
+      Err(error) =>
+        diagnostics.push({
+          line: line_number,
+          text: line.to_owned(),
+          error: TraceCanLogTextError(error),
+        })
+      Ok(record) =>
+        match self.decode_can_frame(record.frame) {
           Err(error) =>
             diagnostics.push({
               line: line_number,
               text: line.to_owned(),
               error: TraceFrameDecodeError(error),
             })
-          Ok(decoded) => frames.push({ line: line_number, frame, decoded, })
+          Ok(decoded) =>
+            frames.push({
+              line: line_number,
+              timestamp: record.timestamp,
+              interface_name: record.interface_name,
+              frame: record.frame,
+              decoded,
+            })
         }
     }
   }
@@ -98,12 +114,22 @@ fn trace_label_text(label : String?) -> String {
 }
 
 ///|
+fn trace_optional_text(value : String?) -> String {
+  match value {
+    Some(text) => text
+    None => ""
+  }
+}
+
+///|
 /// Export successfully decoded trace signals as RFC 4180-style CSV rows.
 /// Text fields are always quoted and embedded quotes are doubled.
 pub fn TraceDecodeResult::to_csv(
   self : TraceDecodeResult,
 ) -> Result[String, CanFrameTextError] {
-  let lines = ["line,frame,message,signal,raw,physical,unit,label"]
+  let lines = [
+    "line,timestamp,interface,frame,message,signal,raw,physical,unit,label",
+  ]
   for record in self.frames {
     let frame_text = match record.frame.to_text() {
       Ok(value) => value
@@ -111,7 +137,7 @@ pub fn TraceDecodeResult::to_csv(
     }
     for signal in record.decoded.signals {
       lines.push(
-        "\{record.line},\{frame_text},\{trace_csv_text(record.decoded.name)},\{trace_csv_text(signal.name)},\{trace_raw_text(signal.raw)},\{signal.physical},\{trace_csv_text(signal.unit)},\{trace_csv_text(trace_label_text(signal.label))}",
+        "\{record.line},\{trace_csv_text(trace_optional_text(record.timestamp))},\{trace_csv_text(trace_optional_text(record.interface_name))},\{frame_text},\{trace_csv_text(record.decoded.name)},\{trace_csv_text(signal.name)},\{trace_raw_text(signal.raw)},\{signal.physical},\{trace_csv_text(signal.unit)},\{trace_csv_text(trace_label_text(signal.label))}",
       )
     }
   }

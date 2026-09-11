@@ -19,6 +19,15 @@ if result.is_valid() {
 }
 ```
 
+Timestamped `candump` records can be decoded without preprocessing:
+
+```moonbit
+let trace = result.database.decode_trace(
+  "(1697042645.123456) can0 100#401F000000000000",
+)
+let csv = trace.to_csv().unwrap()
+```
+
 Run the example and tests with the current MoonBit toolchain:
 
 ```text
@@ -45,7 +54,7 @@ moon test --target wasm --deny-warn
 - compatibility impact classification and deterministic Markdown change reports;
 - standalone MoonBit constant generation for static CAN metadata;
 - deterministic DBC export with parse-write-parse round-trip support;
-- compact SocketCAN frame parsing, formatting, and direct database decoding;
+- compact SocketCAN and timestamped candump parsing, formatting, and direct decoding;
 - recoverable multi-frame trace decoding and CSV signal export;
 - recoverable diagnostics for malformed and misplaced declarations;
 - duplicate message and signal checks;

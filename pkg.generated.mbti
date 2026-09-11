@@ -10,6 +10,8 @@ pub fn parse(StringView) -> ParseResult
 
 pub fn parse_can_frame(StringView) -> Result[CanFrame, CanFrameTextError]
 
+pub fn parse_can_log_record(StringView) -> Result[CanLogRecord, CanLogTextError]
+
 // Errors
 
 // Types and methods
@@ -33,6 +35,21 @@ pub(all) enum CanFrameTextError {
   CanFrameOddPayloadLength(Int)
   CanFramePayloadTooLong(Int)
   CanFrameInvalidPayload(Int, Char)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CanLogRecord {
+  timestamp : String?
+  interface_name : String?
+  frame : CanFrame
+} derive(Eq, @debug.Debug)
+pub fn CanLogRecord::to_text(Self) -> Result[String, CanLogTextError]
+
+pub(all) enum CanLogTextError {
+  CanLogInvalidFieldCount(Int)
+  CanLogInvalidTimestamp(String)
+  CanLogInvalidInterface(String)
+  CanLogTimestampWithoutInterface
+  CanLogFrameTextError(CanFrameTextError)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum ChangeImpact {
@@ -121,6 +138,8 @@ pub(all) struct DecodedSignal {
 
 pub(all) struct DecodedTraceFrame {
   line : Int
+  timestamp : String?
+  interface_name : String?
   frame : CanFrame
   decoded : DecodedMessage
 } derive(Eq, @debug.Debug)
@@ -238,6 +257,7 @@ pub(all) struct TraceDiagnostic {
 
 pub(all) enum TraceError {
   TraceFrameTextError(CanFrameTextError)
+  TraceCanLogTextError(CanLogTextError)
   TraceFrameDecodeError(FrameDecodeError)
 } derive(Eq, @debug.Debug)
 
