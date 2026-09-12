@@ -9,7 +9,9 @@ pub(all) struct DecodedSignal {
 
 ///|
 pub(all) struct DecodedMessage {
+  /// Arbitration identifier without the DBC bit-31 marker.
   id : UInt
+  is_extended_frame : Bool
   name : String
   signals : Array[DecodedSignal]
 } derive(Eq, Debug)
@@ -17,6 +19,8 @@ pub(all) struct DecodedMessage {
 ///|
 pub(all) enum FrameDecodeError {
   UnknownMessage(UInt)
+  InvalidCanFrameIdentifier(UInt, Bool)
+  UnknownCanMessage(UInt, Bool)
   PayloadTooShort(Int, Int)
   MissingMultiplexer
   MultipleMultiplexers
@@ -107,7 +111,12 @@ pub fn Message::decode_frame(
         }
     }
   }
-  Ok({ id: self.id, name: self.name, signals, })
+  Ok({
+    id: self.frame_id(),
+    is_extended_frame: self.is_extended_frame(),
+    name: self.name,
+    signals,
+  })
 }
 
 ///|
@@ -124,7 +133,36 @@ fn raw_value_as_int64(raw : RawValue) -> Int64? {
 }
 
 ///|
-/// Find and decode a message, enriching decoded signals with `VAL_` labels.
+fn enrich_decoded_message(
+  database : Database,
+  message : Message,
+  decoded : DecodedMessage,
+) -> DecodedMessage {
+  let signals : Array[DecodedSignal] = []
+  for signal in decoded.signals {
+    let label = match raw_value_as_int64(signal.raw) {
+      Some(value) => database.value_label(message.id, signal.name, value)
+      None => None
+    }
+    signals.push({
+      name: signal.name,
+      raw: signal.raw,
+      physical: signal.physical,
+      unit: signal.unit,
+      label,
+    })
+  }
+  {
+    id: decoded.id,
+    is_extended_frame: decoded.is_extended_frame,
+    name: decoded.name,
+    signals,
+  }
+}
+
+///|
+/// Find and decode a message by its DBC declaration identifier, enriching
+/// decoded signals with `VAL_` labels. Use `decode_can_payload` for a bus ID.
 pub fn Database::decode_frame(
   self : Database,
   message_id : UInt,
@@ -136,22 +174,29 @@ pub fn Database::decode_frame(
   }
   match message.decode_frame(payload) {
     Err(error) => Err(error)
-    Ok(decoded) => {
-      let signals : Array[DecodedSignal] = []
-      for signal in decoded.signals {
-        let label = match raw_value_as_int64(signal.raw) {
-          Some(value) => self.value_label(message_id, signal.name, value)
-          None => None
-        }
-        signals.push({
-          name: signal.name,
-          raw: signal.raw,
-          physical: signal.physical,
-          unit: signal.unit,
-          label,
-        })
-      }
-      Ok({ id: decoded.id, name: decoded.name, signals, })
-    }
+    Ok(decoded) => Ok(enrich_decoded_message(self, message, decoded))
+  }
+}
+
+///|
+/// Decode a payload using its bus identifier and explicit standard/extended
+/// frame format.
+pub fn Database::decode_can_payload(
+  self : Database,
+  frame_id : UInt,
+  is_extended_frame : Bool,
+  payload : BytesView,
+) -> Result[DecodedMessage, FrameDecodeError] {
+  let dbc_id = match dbc_message_id_from_frame(frame_id, is_extended_frame) {
+    Some(value) => value
+    None => return Err(InvalidCanFrameIdentifier(frame_id, is_extended_frame))
+  }
+  let message = match self.find_message(dbc_id) {
+    Some(value) => value
+    None => return Err(UnknownCanMessage(frame_id, is_extended_frame))
+  }
+  match message.decode_frame(payload) {
+    Err(error) => Err(error)
+    Ok(decoded) => Ok(enrich_decoded_message(self, message, decoded))
   }
 }

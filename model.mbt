@@ -36,6 +36,7 @@ pub(all) struct Signal {
 
 ///|
 pub(all) struct Message {
+  /// Identifier as stored in DBC declarations. Extended frames set bit 31.
   id : UInt
   name : String
   payload_size : Int
@@ -100,6 +101,60 @@ pub fn ParseResult::is_valid(self : ParseResult) -> Bool {
 }
 
 ///|
+fn dbc_message_id_parts(id : UInt) -> (UInt, Bool)? {
+  if id >= 0x80000000U {
+    let frame_id = id & 0x7FFFFFFFU
+    if frame_id <= 0x1FFFFFFFU {
+      Some((frame_id, true))
+    } else {
+      None
+    }
+  } else if id <= 0x7FFU {
+    Some((id, false))
+  } else {
+    None
+  }
+}
+
+///|
+fn dbc_message_id_from_frame(
+  frame_id : UInt,
+  is_extended_frame : Bool,
+) -> UInt? {
+  if is_extended_frame {
+    if frame_id <= 0x1FFFFFFFU {
+      Some(frame_id | 0x80000000U)
+    } else {
+      None
+    }
+  } else if frame_id <= 0x7FFU {
+    Some(frame_id)
+  } else {
+    None
+  }
+}
+
+///|
+/// Return the arbitration identifier placed on the CAN bus.
+pub fn Message::frame_id(self : Message) -> UInt {
+  match dbc_message_id_parts(self.id) {
+    Some((frame_id, _)) => frame_id
+    None => self.id
+  }
+}
+
+///|
+/// Return whether the DBC identifier uses the bit-31 extended-frame marker.
+pub fn Message::is_extended_frame(self : Message) -> Bool {
+  match dbc_message_id_parts(self.id) {
+    Some((_, extended)) => extended
+    None => false
+  }
+}
+
+///|
+/// Find a message by the identifier stored in its DBC declaration. For a bus
+/// arbitration identifier, use `find_can_message`.
 pub fn Database::find_message(self : Database, id : UInt) -> Message? {
   for message in self.messages {
     if message.id == id {
@@ -107,6 +162,20 @@ pub fn Database::find_message(self : Database, id : UInt) -> Message? {
     }
   }
   None
+}
+
+///|
+/// Find a message by its bus arbitration identifier and frame format.
+pub fn Database::find_can_message(
+  self : Database,
+  frame_id : UInt,
+  is_extended_frame : Bool,
+) -> Message? {
+  let dbc_id = match dbc_message_id_from_frame(frame_id, is_extended_frame) {
+    Some(value) => value
+    None => return None
+  }
+  self.find_message(dbc_id)
 }
 
 ///|
@@ -195,6 +264,18 @@ pub fn Database::message_comment(self : Database, id : UInt) -> String? {
 }
 
 ///|
+pub fn Database::can_message_comment(
+  self : Database,
+  frame_id : UInt,
+  is_extended_frame : Bool,
+) -> String? {
+  match dbc_message_id_from_frame(frame_id, is_extended_frame) {
+    Some(id) => self.message_comment(id)
+    None => None
+  }
+}
+
+///|
 pub fn Database::signal_comment(
   self : Database,
   message_id : UInt,
@@ -202,6 +283,19 @@ pub fn Database::signal_comment(
 ) -> String? {
   match self.find_comment(SignalComment(message_id, signal_name.to_owned())) {
     Some(comment) => Some(comment.text)
+    None => None
+  }
+}
+
+///|
+pub fn Database::can_signal_comment(
+  self : Database,
+  frame_id : UInt,
+  is_extended_frame : Bool,
+  signal_name : StringView,
+) -> String? {
+  match dbc_message_id_from_frame(frame_id, is_extended_frame) {
+    Some(id) => self.signal_comment(id, signal_name)
     None => None
   }
 }
@@ -225,6 +319,20 @@ pub fn Database::value_label(
 ) -> String? {
   match self.find_value_table(message_id, signal_name) {
     Some(table) => table.find_label(value)
+    None => None
+  }
+}
+
+///|
+pub fn Database::can_value_label(
+  self : Database,
+  frame_id : UInt,
+  is_extended_frame : Bool,
+  signal_name : StringView,
+  value : Int64,
+) -> String? {
+  match dbc_message_id_from_frame(frame_id, is_extended_frame) {
+    Some(id) => self.value_label(id, signal_name, value)
     None => None
   }
 }

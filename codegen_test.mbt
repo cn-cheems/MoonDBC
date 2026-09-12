@@ -14,6 +14,7 @@ test "generate standalone message and signal constants" {
       #|
       #|/// Message Powertrain (256).
       #|pub const DBC_POWERTRAIN_256_ID : UInt = 256U
+      #|pub const DBC_POWERTRAIN_256_IS_EXTENDED_FRAME : Bool = false
       #|pub const DBC_POWERTRAIN_256_PAYLOAD_SIZE : Int = 8
       #|
       #|/// Signal EngineSpeed in message Powertrain.
@@ -57,6 +58,7 @@ test "generate multiplex and value table constants" {
       #|
       #|/// Message Controls (600).
       #|pub const DBC_CONTROLS_600_ID : UInt = 600U
+      #|pub const DBC_CONTROLS_600_IS_EXTENDED_FRAME : Bool = false
       #|pub const DBC_CONTROLS_600_PAYLOAD_SIZE : Int = 3
       #|
       #|/// Signal Mode in message Controls.
@@ -131,6 +133,7 @@ test "generated identifiers are normalized and stable" {
       #|
       #|/// Message body-control (700).
       #|pub const DBC_BODY_CONTROL_700_ID : UInt = 700U
+      #|pub const DBC_BODY_CONTROL_700_IS_EXTENDED_FRAME : Bool = false
       #|pub const DBC_BODY_CONTROL_700_PAYLOAD_SIZE : Int = 1
       #|
       #|/// Signal door.status in message body-control.

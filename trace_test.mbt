@@ -38,7 +38,7 @@ test "retain trace diagnostics and continue decoding" {
   let trace =
     #|missing-separator
     #|(bad-time) can0 123#F401
-    #|999#00
+    #|777#00
     #|123#00
     #|123#F401
   let result = database.decode_trace(trace)
@@ -60,8 +60,10 @@ test "retain trace diagnostics and continue decoding" {
     },
     {
       line: 3,
-      text: "999#00",
-      error: @moondbc.TraceFrameDecodeError(@moondbc.UnknownMessage(0x999U)),
+      text: "777#00",
+      error: @moondbc.TraceFrameDecodeError(
+        @moondbc.UnknownCanMessage(0x777U, false),
+      ),
     },
     {
       line: 4,
@@ -103,9 +105,10 @@ test "escape quotes in CSV text fields" {
         timestamp: None,
         interface_name: None,
         fd_flags: None,
-        frame: { id: 1U, payload: b"\x01", },
+        frame: { id: 1U, is_extended_frame: false, payload: b"\x01", },
         decoded: {
           id: 1U,
+          is_extended_frame: false,
           name: "Motor \"A\"",
           signals: [
             {
@@ -152,8 +155,13 @@ test "report invalid frames during CSV export" {
         timestamp: None,
         interface_name: None,
         fd_flags: None,
-        frame: { id: 0x20000000U, payload: b"", },
-        decoded: { id: 0x20000000U, name: "Invalid", signals: [], },
+        frame: { id: 0x20000000U, is_extended_frame: true, payload: b"", },
+        decoded: {
+          id: 0x20000000U,
+          is_extended_frame: true,
+          name: "Invalid",
+          signals: [],
+        },
       },
     ],
     diagnostics: [],

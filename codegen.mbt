@@ -70,8 +70,16 @@ fn append_signal_constants(
 ///|
 fn append_message_constants(lines : Array[String], message : Message) -> Unit {
   let prefix = message_codegen_prefix(message)
-  lines.push("/// Message \{message.name} (\{message.id}).")
-  lines.push("pub const \{prefix}_ID : UInt = \{message.id}U")
+  let identity = if message.is_extended_frame() {
+    "extended \{message.frame_id()}; DBC id \{message.id}"
+  } else {
+    message.id.to_string()
+  }
+  lines.push("/// Message \{message.name} (\{identity}).")
+  lines.push("pub const \{prefix}_ID : UInt = \{message.frame_id()}U")
+  lines.push(
+    "pub const \{prefix}_IS_EXTENDED_FRAME : Bool = \{message.is_extended_frame()}",
+  )
   lines.push("pub const \{prefix}_PAYLOAD_SIZE : Int = \{message.payload_size}")
   lines.push("")
   for index, signal in message.signals {

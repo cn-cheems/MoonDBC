@@ -2,16 +2,22 @@
 test "parse and normalize compact CAN frame text" {
   let frame = @moondbc.parse_can_frame(" 123#0aFF00 ").unwrap()
   assert_eq(frame.id, 0x123U)
+  assert_eq(frame.is_extended_frame, false)
   assert_eq(frame.payload, b"\x0a\xff\x00")
   assert_eq(frame.to_text(), Ok("123#0AFF00"))
 }
 
 ///|
 test "format standard and extended CAN identifiers" {
-  let standard : @moondbc.CanFrame = { id: 1U, payload: b"", }
+  let standard : @moondbc.CanFrame = {
+    id: 1U,
+    is_extended_frame: false,
+    payload: b"",
+  }
   assert_eq(standard.to_text(), Ok("001#"))
   let extended = @moondbc.parse_can_frame("1fffffff#deadbeef").unwrap()
   assert_eq(extended.id, 0x1FFFFFFFU)
+  assert_eq(extended.is_extended_frame, true)
   assert_eq(extended.to_text(), Ok("1FFFFFFF#DEADBEEF"))
 }
 
@@ -65,13 +71,21 @@ test "reject malformed and oversized CAN payloads" {
     Err(@moondbc.CanFrameInvalidPayload(1, 'Z')),
   )
   let oversized = Bytes::make(65, b'\x00')
-  let frame : @moondbc.CanFrame = { id: 0x123U, payload: oversized, }
+  let frame : @moondbc.CanFrame = {
+    id: 0x123U,
+    is_extended_frame: false,
+    payload: oversized,
+  }
   assert_eq(frame.to_text(), Err(@moondbc.CanFramePayloadTooLong(65)))
 }
 
 ///|
 test "reject out-of-range identifiers during formatting" {
-  let frame : @moondbc.CanFrame = { id: 0x20000000U, payload: b"", }
+  let frame : @moondbc.CanFrame = {
+    id: 0x20000000U,
+    is_extended_frame: true,
+    payload: b"",
+  }
   assert_eq(
     frame.to_text(),
     Err(@moondbc.CanFrameIdentifierOutOfRange(0x20000000U)),

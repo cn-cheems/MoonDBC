@@ -22,6 +22,7 @@ pub(all) enum ByteOrder {
 
 pub(all) struct CanFrame {
   id : UInt
+  is_extended_frame : Bool
   payload : Bytes
 } derive(Eq, @debug.Debug)
 pub fn CanFrame::to_text(Self) -> Result[String, CanFrameTextError]
@@ -84,13 +85,19 @@ pub(all) struct Database {
   value_tables : Array[ValueTable]
   comments : Array[DbcComment]
 } derive(Eq, @debug.Debug)
+pub fn Database::can_message_comment(Self, UInt, Bool) -> String?
+pub fn Database::can_signal_comment(Self, UInt, Bool, StringView) -> String?
+pub fn Database::can_value_label(Self, UInt, Bool, StringView, Int64) -> String?
 pub fn Database::compatibility_report(Self, Self) -> CompatibilityReport
 pub fn Database::database_comment(Self) -> String?
 pub fn Database::decode_can_frame(Self, CanFrame) -> Result[DecodedMessage, FrameDecodeError]
+pub fn Database::decode_can_payload(Self, UInt, Bool, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::decode_frame(Self, UInt, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Database::decode_trace(Self, StringView) -> TraceDecodeResult
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
+pub fn Database::encode_can_frame(Self, UInt, Bool, Array[SignalAssignment]) -> Result[CanFrame, FrameEncodeError]
 pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
+pub fn Database::find_can_message(Self, UInt, Bool) -> Message?
 pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
@@ -141,6 +148,7 @@ pub(all) enum DbcWriteError {
   DbcWriteNegativeMultiplexValue(UInt, String, Int)
   DbcWriteEmptyValueTable(UInt, String)
   DbcWriteDuplicateTransmitter(UInt, String)
+  DbcWriteInvalidMessageIdentifier(UInt)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum DecodeError {
@@ -150,6 +158,7 @@ pub(all) enum DecodeError {
 
 pub(all) struct DecodedMessage {
   id : UInt
+  is_extended_frame : Bool
   name : String
   signals : Array[DecodedSignal]
 } derive(Eq, @debug.Debug)
@@ -191,6 +200,8 @@ pub(all) enum EncodeError {
 
 pub(all) enum FrameDecodeError {
   UnknownMessage(UInt)
+  InvalidCanFrameIdentifier(UInt, Bool)
+  UnknownCanMessage(UInt, Bool)
   PayloadTooShort(Int, Int)
   MissingMultiplexer
   MultipleMultiplexers
@@ -199,6 +210,8 @@ pub(all) enum FrameDecodeError {
 
 pub(all) enum FrameEncodeError {
   FrameEncodeUnknownMessage(UInt)
+  FrameEncodeInvalidCanIdentifier(UInt, Bool)
+  FrameEncodeUnknownCanMessage(UInt, Bool)
   FrameEncodeInvalidPayloadSize(Int)
   FrameEncodeUnknownSignal(String)
   FrameEncodeDuplicateSignal(String)
@@ -221,6 +234,8 @@ pub(all) struct Message {
 pub fn Message::decode_frame(Self, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Message::encode_frame(Self, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
 pub fn Message::find_signal(Self, StringView) -> Signal?
+pub fn Message::frame_id(Self) -> UInt
+pub fn Message::is_extended_frame(Self) -> Bool
 pub fn Message::is_transmitted_by(Self, StringView) -> Bool
 pub fn Message::transmitters(Self) -> Array[String]
 
@@ -293,6 +308,7 @@ pub(all) enum TraceError {
 } derive(Eq, @debug.Debug)
 
 pub(all) enum ValidationIssue {
+  InvalidMessageIdentifierIssue(UInt)
   DuplicateMessageIdIssue(UInt)
   InvalidPayloadSizeIssue(UInt, Int)
   DuplicateSignalNameIssue(UInt, String)

@@ -86,6 +86,11 @@ fn parse_message_line(line : StringView) -> Result[Message, String] {
     Some(value) => value
     None => return Err("message id is not an unsigned integer")
   }
+  if dbc_message_id_parts(id) is None {
+    return Err(
+      "message id must be an 11-bit standard id or a bit-31 flagged 29-bit id",
+    )
+  }
   let tail = words(body[colon + 1:])
   if tail.length() < 2 {
     return Err("message declaration requires payload size and transmitter")
@@ -127,6 +132,9 @@ fn parse_message_transmitters_line(
   let message_id = match parse_uint(header[0]) {
     Some(value) => value
     None => return Err("message transmitter id is not an unsigned integer")
+  }
+  if dbc_message_id_parts(message_id) is None {
+    return Err("message transmitter id is outside the DBC identifier range")
   }
   let transmitter_text = content[colon + 1:].trim()
   if transmitter_text.is_empty() {
@@ -367,7 +375,12 @@ fn parse_comment_line(
     [kind, node] if kind == "BU_" => NodeComment(node.to_owned())
     [kind, message_id] if kind == "BO_" =>
       match parse_uint(message_id) {
-        Some(value) => MessageComment(value)
+        Some(value) =>
+          if dbc_message_id_parts(value) is Some(_) {
+            MessageComment(value)
+          } else {
+            return Err("message comment id is outside the DBC identifier range")
+          }
         None => return Err("message comment id is not an unsigned integer")
       }
     [kind, message_id, signal] if kind == "SG_" => {
@@ -375,6 +388,11 @@ fn parse_comment_line(
         Some(value) => value
         None =>
           return Err("signal comment message id is not an unsigned integer")
+      }
+      if dbc_message_id_parts(id) is None {
+        return Err(
+          "signal comment message id is outside the DBC identifier range",
+        )
       }
       SignalComment(id, signal.to_owned())
     }
@@ -412,6 +430,9 @@ fn parse_value_line(
   let message_id = match parse_uint(fields[0]) {
     Some(value) => value
     None => return Err("value table message id is not an unsigned integer")
+  }
+  if dbc_message_id_parts(message_id) is None {
+    return Err("value table message id is outside the DBC identifier range")
   }
   let signal_start = match find_after(content, fields[0].length(), fields[1]) {
     Some(value) => value

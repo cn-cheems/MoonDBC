@@ -1,5 +1,6 @@
 ///|
 pub(all) enum ValidationIssue {
+  InvalidMessageIdentifierIssue(UInt)
   DuplicateMessageIdIssue(UInt)
   InvalidPayloadSizeIssue(UInt, Int)
   DuplicateSignalNameIssue(UInt, String)
@@ -98,6 +99,9 @@ fn multiplex_selector_fits(signal : Signal, selector : Int) -> Bool {
 
 ///|
 fn validate_message(message : Message, issues : Array[ValidationIssue]) -> Unit {
+  if dbc_message_id_parts(message.id) is None {
+    issues.push(InvalidMessageIdentifierIssue(message.id))
+  }
   if message.payload_size < 0 || message.payload_size > 64 {
     issues.push(InvalidPayloadSizeIssue(message.id, message.payload_size))
   }

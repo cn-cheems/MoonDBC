@@ -7,6 +7,7 @@ pub(all) enum DbcWriteError {
   DbcWriteNegativeMultiplexValue(UInt, String, Int)
   DbcWriteEmptyValueTable(UInt, String)
   DbcWriteDuplicateTransmitter(UInt, String)
+  DbcWriteInvalidMessageIdentifier(UInt)
 } derive(Eq, Debug)
 
 ///|
@@ -164,6 +165,9 @@ fn write_message(
   lines : Array[String],
   message : Message,
 ) -> Result[Unit, DbcWriteError] {
+  if dbc_message_id_parts(message.id) is None {
+    return Err(DbcWriteInvalidMessageIdentifier(message.id))
+  }
   match check_dbc_token("message name", message.name) {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -225,6 +229,9 @@ fn write_value_table(
   lines : Array[String],
   table : ValueTable,
 ) -> Result[Unit, DbcWriteError] {
+  if dbc_message_id_parts(table.message_id) is None {
+    return Err(DbcWriteInvalidMessageIdentifier(table.message_id))
+  }
   match check_dbc_token("value table signal name", table.signal_name) {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -271,8 +278,16 @@ fn write_comment(comment : DbcComment) -> Result[String, DbcWriteError] {
       }
       "CM_ BU_ \{node}"
     }
-    MessageComment(message_id) => "CM_ BO_ \{message_id}"
+    MessageComment(message_id) => {
+      if dbc_message_id_parts(message_id) is None {
+        return Err(DbcWriteInvalidMessageIdentifier(message_id))
+      }
+      "CM_ BO_ \{message_id}"
+    }
     SignalComment(message_id, signal_name) => {
+      if dbc_message_id_parts(message_id) is None {
+        return Err(DbcWriteInvalidMessageIdentifier(message_id))
+      }
       match check_dbc_token("comment signal", signal_name) {
         Err(error) => return Err(error)
         Ok(_) => ()

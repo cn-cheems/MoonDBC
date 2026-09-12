@@ -4,7 +4,11 @@ test "parse compact and interface-prefixed CAN log records" {
   assert_eq(compact.timestamp, None)
   assert_eq(compact.interface_name, None)
   assert_eq(compact.fd_flags, None)
-  assert_eq(compact.frame, { id: 0x123U, payload: b"\x0a\xff", })
+  assert_eq(compact.frame, {
+    id: 0x123U,
+    is_extended_frame: false,
+    payload: b"\x0a\xff",
+  })
   assert_eq(compact.to_text(), Ok("123#0AFF"))
   let prefixed = @moondbc.parse_can_log_record("vcan0 123#01").unwrap()
   assert_eq(prefixed.timestamp, None)
@@ -24,13 +28,21 @@ test "parse and format SocketCAN FD records" {
   assert_eq(record.timestamp, Some("1697042645.123456"))
   assert_eq(record.interface_name, Some("can0"))
   assert_eq(record.fd_flags, Some(1))
-  assert_eq(record.frame, { id: 0x123U, payload: b"\xde\xad\xbe\xef", })
+  assert_eq(record.frame, {
+    id: 0x123U,
+    is_extended_frame: false,
+    payload: b"\xde\xad\xbe\xef",
+  })
   assert_eq(record.to_text(), Ok("(1697042645.123456) can0 123##1DEADBEEF"))
   let maximum : @moondbc.CanLogRecord = {
     timestamp: None,
     interface_name: None,
     fd_flags: Some(4),
-    frame: { id: 0x123U, payload: Bytes::make(64, b'\xaa'), },
+    frame: {
+      id: 0x123U,
+      is_extended_frame: false,
+      payload: Bytes::make(64, b'\xaa'),
+    },
   }
   let encoded = maximum.to_text().unwrap()
   assert_eq(@moondbc.parse_can_log_record(encoded).unwrap(), maximum)
@@ -45,6 +57,7 @@ test "parse timestamped candump records and flexible whitespace" {
   assert_eq(record.interface_name, Some("can0"))
   assert_eq(record.fd_flags, None)
   assert_eq(record.frame.id, 0x1FFFFFFFU)
+  assert_eq(record.frame.is_extended_frame, true)
   assert_eq(record.frame.payload, b"\xde\xad\xbe\xef")
   assert_eq(record.to_text(), Ok("(1697042645.123456) can0 1FFFFFFF#DEADBEEF"))
 }
@@ -87,7 +100,11 @@ test "reject malformed candump metadata" {
 
 ///|
 test "validate metadata when formatting CAN log records" {
-  let frame : @moondbc.CanFrame = { id: 1U, payload: b"", }
+  let frame : @moondbc.CanFrame = {
+    id: 1U,
+    is_extended_frame: false,
+    payload: b"",
+  }
   let missing_interface : @moondbc.CanLogRecord = {
     timestamp: Some("1.25"),
     interface_name: None,

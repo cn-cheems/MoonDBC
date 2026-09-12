@@ -1,7 +1,10 @@
 ///|
 /// A CAN data frame independent of a specific socket or operating system.
 pub(all) struct CanFrame {
+  /// Arbitration identifier without SocketCAN or DBC flag bits.
   id : UInt
+  /// Distinguishes the extended namespace even when `id` fits in 11 bits.
+  is_extended_frame : Bool
   payload : Bytes
 } derive(Eq, Debug)
 
@@ -31,7 +34,9 @@ fn can_hex_nibble(char : Char) -> Int? {
 }
 
 ///|
-fn parse_can_identifier(text : StringView) -> Result[UInt, CanFrameTextError] {
+fn parse_can_identifier(
+  text : StringView,
+) -> Result[(UInt, Bool), CanFrameTextError] {
   if text.is_empty() {
     return Err(CanFrameEmptyIdentifier)
   }
@@ -48,10 +53,12 @@ fn parse_can_identifier(text : StringView) -> Result[UInt, CanFrameTextError] {
     identifier = identifier * 16U + nibble.reinterpret_as_uint()
     index += 1
   }
-  if identifier > 0x1FFFFFFFU {
+  let is_extended_frame = text.length() > 3
+  let maximum = if is_extended_frame { 0x1FFFFFFFU } else { 0x7FFU }
+  if identifier > maximum {
     Err(CanFrameIdentifierOutOfRange(identifier))
   } else {
-    Ok(identifier)
+    Ok((identifier, is_extended_frame))
   }
 }
 
@@ -85,9 +92,9 @@ fn parse_can_payload(text : StringView) -> Result[Bytes, CanFrameTextError] {
 }
 
 ///|
-/// Parse the compact SocketCAN representation `ID#DATA`. Both fields use
-/// hexadecimal notation; the payload may be empty and may contain up to 64
-/// bytes for CAN FD compatibility.
+/// Parse the compact SocketCAN representation `ID#DATA`. One to three ID
+/// digits denote a standard frame; four to eight denote an extended frame.
+/// The payload may be empty and may contain up to 64 bytes for CAN FD.
 pub fn parse_can_frame(
   text : StringView,
 ) -> Result[CanFrame, CanFrameTextError] {
@@ -96,7 +103,8 @@ pub fn parse_can_frame(
     Some(index) => index
     None => return Err(CanFrameMissingSeparator)
   }
-  let identifier = match parse_can_identifier(input[:separator]) {
+  let (identifier, is_extended_frame) = match
+    parse_can_identifier(input[:separator]) {
     Ok(value) => value
     Err(error) => return Err(error)
   }
@@ -104,13 +112,17 @@ pub fn parse_can_frame(
     Ok(value) => value
     Err(error) => return Err(error)
   }
-  Ok({ id: identifier, payload, })
+  Ok({ id: identifier, is_extended_frame, payload, })
 }
 
 ///|
-fn append_padded_identifier(chars : Array[Char], identifier : UInt) -> Unit {
+fn append_padded_identifier(
+  chars : Array[Char],
+  identifier : UInt,
+  is_extended_frame : Bool,
+) -> Unit {
   let text = identifier.to_string(radix=16).to_upper()
-  let width = if identifier <= 0x7FFU { 3 } else { 8 }
+  let width = if is_extended_frame { 8 } else { 3 }
   for padding = text.length(); padding < width; padding = padding + 1 {
     chars.push('0')
   }
@@ -132,14 +144,15 @@ fn can_hex_digit(value : Int) -> Char {
 /// Render a frame as canonical compact SocketCAN text. Standard identifiers
 /// use three hexadecimal digits and extended identifiers use eight.
 pub fn CanFrame::to_text(self : CanFrame) -> Result[String, CanFrameTextError] {
-  if self.id > 0x1FFFFFFFU {
+  let maximum = if self.is_extended_frame { 0x1FFFFFFFU } else { 0x7FFU }
+  if self.id > maximum {
     return Err(CanFrameIdentifierOutOfRange(self.id))
   }
   if self.payload.length() > 64 {
     return Err(CanFramePayloadTooLong(self.payload.length()))
   }
   let chars : Array[Char] = []
-  append_padded_identifier(chars, self.id)
+  append_padded_identifier(chars, self.id, self.is_extended_frame)
   chars.push('#')
   for byte in self.payload {
     let value = byte.to_int()
@@ -155,5 +168,5 @@ pub fn Database::decode_can_frame(
   self : Database,
   frame : CanFrame,
 ) -> Result[DecodedMessage, FrameDecodeError] {
-  self.decode_frame(frame.id, frame.payload)
+  self.decode_can_payload(frame.id, frame.is_extended_frame, frame.payload)
 }

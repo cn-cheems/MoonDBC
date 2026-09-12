@@ -2,7 +2,7 @@
 
 MoonDBC is a DBC parser and CAN signal codec toolkit written in MoonBit. It is intended for automotive gateways, battery-management systems, robotics, test benches, and browser-based diagnostic tools that need to turn raw CAN frames into named engineering values.
 
-The current milestone provides a portable DBC data model, parsing for messages, signals, comments and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `CM_`, and `VAL_` declarations, including multiple transmitters, byte order, signedness, scale, offset, range, unit, receivers, multiplexing markers, documentation comments, and enum labels.
+The current milestone provides a portable DBC data model, parsing for messages, signals, comments and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `CM_`, and `VAL_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, byte order, signedness, scale, offset, range, unit, receivers, multiplexing markers, documentation comments, and enum labels.
 
 ## Quick start
 
@@ -18,6 +18,10 @@ if result.is_valid() {
   println("\{message.name}: \{speed} rpm")
 }
 ```
+
+For extended messages, `Message.id` preserves the bit-31 DBC identifier used by
+cross-references. Use `Message::frame_id` and `Message::is_extended_frame` when
+constructing or matching CAN bus frames.
 
 Timestamped `candump` records can be decoded without preprocessing:
 
@@ -44,6 +48,7 @@ moon test --target wasm --deny-warn
 - deferred resolution of `VAL_` value descriptions and label lookup;
 - database, node, message, and signal `CM_` comments with reference validation;
 - multi-transmitter messages through deferred `BO_TX_BU_` resolution;
+- bit-31 DBC extended-frame identifiers with collision-safe SocketCAN lookup;
 - bit-accurate Intel and Motorola signal extraction across byte boundaries;
 - signed value extension and factor/offset conversion;
 - raw and physical signal encoding without mutating the input payload;

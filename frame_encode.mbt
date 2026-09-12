@@ -8,6 +8,8 @@ pub(all) struct SignalAssignment {
 ///|
 pub(all) enum FrameEncodeError {
   FrameEncodeUnknownMessage(UInt)
+  FrameEncodeInvalidCanIdentifier(UInt, Bool)
+  FrameEncodeUnknownCanMessage(UInt, Bool)
   FrameEncodeInvalidPayloadSize(Int)
   FrameEncodeUnknownSignal(String)
   FrameEncodeDuplicateSignal(String)
@@ -172,7 +174,8 @@ pub fn Message::encode_frame(
 }
 
 ///|
-/// Find a message and build its CAN payload from named physical values.
+/// Find a message by its DBC declaration identifier and build its CAN payload.
+/// Use `encode_can_frame` when starting from a bus arbitration identifier.
 pub fn Database::encode_frame(
   self : Database,
   message_id : UInt,
@@ -182,4 +185,29 @@ pub fn Database::encode_frame(
     None => Err(FrameEncodeUnknownMessage(message_id))
     Some(message) => message.encode_frame(assignments)
   }
+}
+
+///|
+/// Build a complete standard or extended CAN frame from named physical values.
+pub fn Database::encode_can_frame(
+  self : Database,
+  frame_id : UInt,
+  is_extended_frame : Bool,
+  assignments : Array[SignalAssignment],
+) -> Result[CanFrame, FrameEncodeError] {
+  let dbc_id = match dbc_message_id_from_frame(frame_id, is_extended_frame) {
+    Some(value) => value
+    None =>
+      return Err(FrameEncodeInvalidCanIdentifier(frame_id, is_extended_frame))
+  }
+  let message = match self.find_message(dbc_id) {
+    Some(value) => value
+    None =>
+      return Err(FrameEncodeUnknownCanMessage(frame_id, is_extended_frame))
+  }
+  let payload = match message.encode_frame(assignments) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  Ok({ id: frame_id, is_extended_frame, payload, })
 }

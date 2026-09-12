@@ -24,7 +24,11 @@ fn main {
       { name: "Gear", physical: 0.0, },
     ])
     .unwrap()
-  let frame : @moondbc.CanFrame = { id: 256U, payload, }
+  let frame : @moondbc.CanFrame = {
+    id: 256U,
+    is_extended_frame: false,
+    payload,
+  }
   println("SocketCAN frame: \{frame.to_text().unwrap()}")
   let trace = result.database.decode_trace(frame.to_text().unwrap())
   println("trace rows: \{trace.frames.length()}")
