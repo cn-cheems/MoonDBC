@@ -118,6 +118,7 @@ test "validate manually constructed signal metadata" {
     name: "Manual",
     payload_size: 1,
     transmitter: "ECU",
+    additional_transmitters: [],
     signals: [signal],
   }
   let database : @moondbc.Database = {

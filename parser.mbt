@@ -54,6 +54,13 @@ priv struct PendingDbcComment {
 }
 
 ///|
+priv struct PendingMessageTransmitters {
+  line : Int
+  message_id : UInt
+  transmitters : Array[String]
+}
+
+///|
 fn find_after(text : StringView, start : Int, needle : StringView) -> Int? {
   if start < 0 || start > text.length() {
     return None
@@ -95,8 +102,50 @@ fn parse_message_line(line : StringView) -> Result[Message, String] {
     name: header[1].to_owned(),
     payload_size,
     transmitter: tail[1].to_owned(),
+    additional_transmitters: [],
     signals: [],
   })
+}
+
+///|
+fn parse_message_transmitters_line(
+  line : StringView,
+) -> Result[(UInt, Array[String]), String] {
+  let body = line[9:].trim()
+  if !body.has_suffix(";") {
+    return Err("message transmitter declaration is missing ';'")
+  }
+  let content = body[:body.length() - 1].trim()
+  let colon = match content.find(":") {
+    Some(value) => value
+    None => return Err("message transmitter declaration is missing ':'")
+  }
+  let header = words(content[:colon])
+  if header.length() != 1 {
+    return Err("message transmitter declaration requires one message id")
+  }
+  let message_id = match parse_uint(header[0]) {
+    Some(value) => value
+    None => return Err("message transmitter id is not an unsigned integer")
+  }
+  let transmitter_text = content[colon + 1:].trim()
+  if transmitter_text.is_empty() {
+    return Err("message transmitter declaration requires at least one node")
+  }
+  let transmitters : Array[String] = []
+  for part in transmitter_text.split(",") {
+    let transmitter = part.trim()
+    if transmitter.is_empty() {
+      return Err("message transmitter declaration contains an empty node")
+    }
+    for existing in transmitters {
+      if existing.view() == transmitter {
+        return Err("message transmitter declaration contains a duplicate node")
+      }
+    }
+    transmitters.push(transmitter.to_owned())
+  }
+  Ok((message_id, transmitters))
 }
 
 ///|
@@ -465,6 +514,16 @@ fn contains_comment_target(
 }
 
 ///|
+fn contains_message_reference(ids : Array[UInt], id : UInt) -> Bool {
+  for candidate in ids {
+    if candidate == id {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn add_diagnostic(
   diagnostics : Array[Diagnostic],
   line : Int,
@@ -484,6 +543,8 @@ pub fn parse(source : StringView) -> ParseResult {
   let value_tables : Array[ValueTable] = []
   let pending_comments : Array[PendingDbcComment] = []
   let comments : Array[DbcComment] = []
+  let pending_message_transmitters : Array[PendingMessageTransmitters] = []
+  let resolved_transmitter_messages : Array[UInt] = []
   let diagnostics : Array[Diagnostic] = []
   let mut version : String? = None
   let mut current_message : Int? = None
@@ -507,6 +568,17 @@ pub fn parse(source : StringView) -> ParseResult {
         if !contains_node(nodes, node) {
           nodes.push(node.to_owned())
         }
+      }
+    } else if line.has_prefix("BO_TX_BU_ ") {
+      match parse_message_transmitters_line(line) {
+        Ok((message_id, transmitters)) =>
+          pending_message_transmitters.push({
+            line: line_number,
+            message_id,
+            transmitters,
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC016", message)
       }
     } else if line.has_prefix("BO_ ") {
       match parse_message_line(line) {
@@ -676,6 +748,37 @@ pub fn parse(source : StringView) -> ParseResult {
       } else {
         comments.push({ target: pending.target, text: pending.text, })
       }
+    }
+  }
+  for pending in pending_message_transmitters {
+    match find_message_index(messages, pending.message_id) {
+      None =>
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC017",
+          "message transmitter declaration refers to an unknown message",
+        )
+      Some(message_index) =>
+        if contains_message_reference(
+            resolved_transmitter_messages,
+            pending.message_id,
+          ) {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC018",
+            "duplicate transmitter declaration for the same message",
+          )
+        } else {
+          let message = messages[message_index]
+          for transmitter in pending.transmitters {
+            if transmitter != message.transmitter {
+              message.additional_transmitters.push(transmitter)
+            }
+          }
+          resolved_transmitter_messages.push(pending.message_id)
+        }
     }
   }
   {

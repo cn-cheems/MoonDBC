@@ -76,6 +76,7 @@ test "validate comment references in manually built databases" {
         name: "Status",
         payload_size: 1,
         transmitter: "ECU",
+        additional_transmitters: [],
         signals: [
           {
             name: "Speed",

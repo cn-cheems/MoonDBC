@@ -3,6 +3,7 @@ pub(all) struct MessageMetadata {
   name : String
   payload_size : Int
   transmitter : String
+  additional_transmitters : Array[String]
 } derive(Eq, Debug)
 
 ///|
@@ -29,6 +30,7 @@ fn message_metadata(message : Message) -> MessageMetadata {
     name: message.name,
     payload_size: message.payload_size,
     transmitter: message.transmitter,
+    additional_transmitters: message.additional_transmitters,
   }
 }
 

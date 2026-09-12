@@ -140,6 +140,7 @@ pub(all) enum DbcWriteError {
   DbcWriteNonFiniteSignalNumber(UInt, String, String)
   DbcWriteNegativeMultiplexValue(UInt, String, Int)
   DbcWriteEmptyValueTable(UInt, String)
+  DbcWriteDuplicateTransmitter(UInt, String)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum DecodeError {
@@ -214,16 +215,20 @@ pub(all) struct Message {
   name : String
   payload_size : Int
   transmitter : String
+  additional_transmitters : Array[String]
   signals : Array[Signal]
 } derive(Eq, @debug.Debug)
 pub fn Message::decode_frame(Self, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Message::encode_frame(Self, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
 pub fn Message::find_signal(Self, StringView) -> Signal?
+pub fn Message::is_transmitted_by(Self, StringView) -> Bool
+pub fn Message::transmitters(Self) -> Array[String]
 
 pub(all) struct MessageMetadata {
   name : String
   payload_size : Int
   transmitter : String
+  additional_transmitters : Array[String]
 } derive(Eq, @debug.Debug)
 
 pub(all) enum MultiplexRole {
@@ -303,6 +308,7 @@ pub(all) enum ValidationIssue {
   UnknownCommentNodeIssue(String)
   UnknownCommentMessageIssue(UInt)
   UnknownCommentSignalIssue(UInt, String)
+  DuplicateMessageTransmitterIssue(UInt, String)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct ValueDescription {

@@ -40,6 +40,7 @@ pub(all) struct Message {
   name : String
   payload_size : Int
   transmitter : String
+  additional_transmitters : Array[String]
   signals : Array[Signal]
 } derive(Eq, Debug)
 
@@ -116,6 +117,30 @@ pub fn Message::find_signal(self : Message, name : StringView) -> Signal? {
     }
   }
   None
+}
+
+///|
+/// Return the primary transmitter followed by transmitters declared through
+/// `BO_TX_BU_`.
+pub fn Message::transmitters(self : Message) -> Array[String] {
+  let result = [self.transmitter]
+  for transmitter in self.additional_transmitters {
+    result.push(transmitter)
+  }
+  result
+}
+
+///|
+pub fn Message::is_transmitted_by(self : Message, node : StringView) -> Bool {
+  if self.transmitter.view() == node {
+    return true
+  }
+  for transmitter in self.additional_transmitters {
+    if transmitter.view() == node {
+      return true
+    }
+  }
+  false
 }
 
 ///|

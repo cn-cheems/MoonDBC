@@ -6,6 +6,7 @@ pub(all) enum DbcWriteError {
   DbcWriteNonFiniteSignalNumber(UInt, String, String)
   DbcWriteNegativeMultiplexValue(UInt, String, Int)
   DbcWriteEmptyValueTable(UInt, String)
+  DbcWriteDuplicateTransmitter(UInt, String)
 } derive(Eq, Debug)
 
 ///|
@@ -187,6 +188,39 @@ fn write_message(
 }
 
 ///|
+fn write_message_transmitters(
+  message : Message,
+) -> Result[String?, DbcWriteError] {
+  if message.additional_transmitters.is_empty() {
+    return Ok(None)
+  }
+  let transmitters = [message.transmitter]
+  for transmitter in message.additional_transmitters {
+    match check_dbc_token("message transmitter", transmitter) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    for existing in transmitters {
+      if existing == transmitter {
+        return Err(DbcWriteDuplicateTransmitter(message.id, transmitter))
+      }
+    }
+    transmitters.push(transmitter)
+  }
+  Ok(Some("BO_TX_BU_ \{message.id} : \{transmitters.join(",")};"))
+}
+
+///|
+fn has_additional_transmitters(messages : Array[Message]) -> Bool {
+  for message in messages {
+    if !message.additional_transmitters.is_empty() {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn write_value_table(
   lines : Array[String],
   table : ValueTable,
@@ -259,6 +293,7 @@ fn write_comment(comment : DbcComment) -> Result[String, DbcWriteError] {
 /// this method reports values that cannot be represented by the parser syntax.
 pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   let lines : Array[String] = []
+  let has_transmitter_section = has_additional_transmitters(self.messages)
   match self.version {
     Some(version) => {
       match check_dbc_quoted_text("database version", version) {
@@ -292,10 +327,22 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       Ok(_) => ()
     }
     if index + 1 < self.messages.length() ||
+      has_transmitter_section ||
       !self.comments.is_empty() ||
       !self.value_tables.is_empty() {
       lines.push("")
     }
+  }
+  for message in self.messages {
+    match write_message_transmitters(message) {
+      Err(error) => return Err(error)
+      Ok(Some(line)) => lines.push(line)
+      Ok(None) => ()
+    }
+  }
+  if has_transmitter_section &&
+    (!self.comments.is_empty() || !self.value_tables.is_empty()) {
+    lines.push("")
   }
   for comment in self.comments {
     match write_comment(comment) {

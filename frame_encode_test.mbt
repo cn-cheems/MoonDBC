@@ -152,6 +152,7 @@ test "report unknown messages and invalid payload sizes during encoding" {
     name: "Invalid",
     payload_size: -1,
     transmitter: "ECU",
+    additional_transmitters: [],
     signals: [],
   }
   assert_eq(

@@ -101,6 +101,7 @@ test "generated identifiers are normalized and stable" {
         name: "body-control",
         payload_size: 1,
         transmitter: "ECU",
+        additional_transmitters: [],
         signals: [
           {
             name: "door.status",

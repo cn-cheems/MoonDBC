@@ -32,8 +32,18 @@ test "compare global and message metadata" {
     @moondbc.NodesChangedChange(["ECU"], ["ECU", "Dashboard"]),
     @moondbc.MessageMetadataChangedChange(
       401U,
-      { name: "OldName", payload_size: 1, transmitter: "ECU", },
-      { name: "NewName", payload_size: 2, transmitter: "Dashboard", },
+      {
+        name: "OldName",
+        payload_size: 1,
+        transmitter: "ECU",
+        additional_transmitters: [],
+      },
+      {
+        name: "NewName",
+        payload_size: 2,
+        transmitter: "Dashboard",
+        additional_transmitters: [],
+      },
     ),
   ])
 }

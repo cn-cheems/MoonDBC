@@ -90,7 +90,7 @@ pub fn DatabaseChange::summary(self : DatabaseChange) -> String {
     MessageRemovedChange(message) =>
       "Message \{message.id} (\{message.name}) was removed."
     MessageMetadataChangedChange(id, before, after) =>
-      "Message \{id} metadata changed from \{before.name}/\{before.payload_size} bytes to \{after.name}/\{after.payload_size} bytes."
+      "Message \{id} metadata changed from \{before.name}/\{before.payload_size} bytes/\{before.additional_transmitters.length() + 1} transmitter(s) to \{after.name}/\{after.payload_size} bytes/\{after.additional_transmitters.length() + 1} transmitter(s)."
     SignalAddedChange(message_id, signal) =>
       "Signal \{signal.name} in message \{message_id} was added."
     SignalRemovedChange(message_id, signal) =>

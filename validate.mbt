@@ -15,6 +15,7 @@ pub(all) enum ValidationIssue {
   UnknownCommentNodeIssue(String)
   UnknownCommentMessageIssue(UInt)
   UnknownCommentSignalIssue(UInt, String)
+  DuplicateMessageTransmitterIssue(UInt, String)
 } derive(Eq, Debug)
 
 ///|
@@ -109,6 +110,16 @@ fn validate_message(message : Message, issues : Array[ValidationIssue]) -> Unit 
   let occupied : Array[Array[Int]?] = []
   let mut multiplexer : Signal? = None
   let mut multiplexer_count = 0
+  for index, transmitter in message.additional_transmitters {
+    if transmitter == message.transmitter {
+      issues.push(DuplicateMessageTransmitterIssue(message.id, transmitter))
+    }
+    for previous = 0; previous < index; previous = previous + 1 {
+      if message.additional_transmitters[previous] == transmitter {
+        issues.push(DuplicateMessageTransmitterIssue(message.id, transmitter))
+      }
+    }
+  }
   for index, signal in message.signals {
     for previous = 0; previous < index; previous = previous + 1 {
       if message.signals[previous].name == signal.name {
