@@ -12,6 +12,8 @@ pub fn parse_can_frame(StringView) -> Result[CanFrame, CanFrameTextError]
 
 pub fn parse_can_log_record(StringView) -> Result[CanLogRecord, CanLogTextError]
 
+pub fn run_cli(CliMode, String, StringView) -> CliOutput
+
 // Errors
 
 // Types and methods
@@ -66,6 +68,17 @@ pub(all) enum ChangeImpact {
 pub(all) struct ClassifiedChange {
   impact : ChangeImpact
   change : DatabaseChange
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CliMode {
+  CliCheck
+  CliList
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CliOutput {
+  stdout : String
+  stderr : String
+  exit_code : Int
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CompatibilityReport {

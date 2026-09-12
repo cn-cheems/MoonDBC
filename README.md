@@ -41,6 +41,13 @@ moon check --target wasm --deny-warn
 moon test --target wasm --deny-warn
 ```
 
+Inspect a real DBC file with the native command-line tool:
+
+```text
+moon run --target native cmd/moondbc -- check examples/vehicle.dbc
+moon run --target native cmd/moondbc -- list examples/vehicle.dbc
+```
+
 ## Current scope
 
 - typed models for databases, messages, signals, byte order, signedness, and multiplexing;
@@ -64,12 +71,13 @@ moon test --target wasm --deny-warn
 - Classical CAN and CAN FD SocketCAN/candump parsing, formatting, and direct decoding;
 - recoverable multi-frame trace decoding and CSV signal export;
 - recoverable diagnostics for malformed and misplaced declarations;
+- native `check` and `list` commands for real DBC files;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 
 ## Roadmap
 
-- native CLI and browser workbench.
+- CAN trace decoding commands and browser workbench.
 
 ## Project origin
 

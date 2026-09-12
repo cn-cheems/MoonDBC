@@ -18,6 +18,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: Set up MoonBit
         uses: hustcer/setup-moonbit@v1
+      - name: Update registry
+        run: moon update
       - name: Show versions
         run: moon version --all
       - name: Check

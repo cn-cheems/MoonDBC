@@ -13,3 +13,7 @@ keywords = [ "dbc", "can", "automotive", "parser", "codec" ]
 preferred_target = "wasm"
 
 description = "A DBC parser and CAN signal codec toolkit written in MoonBit."
+
+import {
+  "moonbitlang/async@0.21.3",
+}
