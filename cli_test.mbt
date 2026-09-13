@@ -93,3 +93,74 @@ test "list standard extended and multiplexed messages" {
     ),
   )
 }
+
+///|
+test "decode a candump trace as CSV" {
+  let output = @moondbc.run_decode_cli(
+    "vehicle.dbc",
+    (
+      #|BO_ 291 Status: 3 ECU
+      #| SG_ Speed : 0|16@1+ (0.5,0) [0|32767.5] "km/h" Logger
+      #| SG_ State : 16|8@1+ (1,0) [0|1] "" Logger
+      #|VAL_ 291 State 0 "Off" 1 "On";
+    ),
+    "capture.log",
+    "(1697042645.5) can0 123#F40101",
+  )
+  assert_eq(output.exit_code, 0)
+  assert_eq(output.stderr, "")
+  assert_eq(
+    output.stdout,
+    [
+      "line,timestamp,interface,fd_flags,frame,message,signal,raw,physical,unit,label",
+      "1,\"1697042645.5\",\"can0\",,123#F40101,\"Status\",\"Speed\",500,250,\"km/h\",\"\"",
+      "1,\"1697042645.5\",\"can0\",,123#F40101,\"Status\",\"State\",1,1,\"\",\"On\"",
+      "",
+    ].join("\r\n"),
+  )
+}
+
+///|
+test "retain valid trace rows when another row is malformed" {
+  let output = @moondbc.run_decode_cli(
+    "vehicle.dbc",
+    (
+      #|BO_ 291 Status: 2 ECU
+      #| SG_ Speed : 0|16@1+ (0.5,0) [0|32767.5] "km/h" Logger
+    ),
+    "capture.log",
+    (
+      #|missing-separator
+      #|123#F401
+    ),
+  )
+  assert_eq(output.exit_code, 1)
+  assert_eq(output.stderr, "capture.log:1: CAN frame is missing '#'\n")
+  assert_eq(
+    output.stdout,
+    [
+      "line,timestamp,interface,fd_flags,frame,message,signal,raw,physical,unit,label",
+      "2,\"\",\"\",,123#F401,\"Status\",\"Speed\",500,250,\"km/h\",\"\"", "",
+    ].join("\r\n"),
+  )
+}
+
+///|
+test "reject an invalid DBC before decoding a trace" {
+  let output = @moondbc.run_decode_cli(
+    "invalid.dbc",
+    (
+      #|BO_ 300 Status: 1 ECU
+      #| SG_ First : 0|8@1+ (1,0) [0|255] "" ECU
+      #| SG_ Second : 4|4@1+ (1,0) [0|15] "" ECU
+    ),
+    "capture.log",
+    "12C#00",
+  )
+  assert_eq(output.stdout, "")
+  assert_eq(output.exit_code, 1)
+  assert_eq(
+    output.stderr,
+    "invalid.dbc: signals First and Second overlap in message 12C standard\n",
+  )
+}

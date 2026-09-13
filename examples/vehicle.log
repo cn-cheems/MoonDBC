@@ -1,0 +1,5 @@
+// Classical CAN powertrain data
+(1697042645.123456) can0 100#401F640001000000
+
+// Extended CAN status data
+(1697042645.223456) can0 00000123#2A

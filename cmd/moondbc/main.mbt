@@ -26,6 +26,22 @@ fn command() -> @argparse.Command {
           ),
         ],
       ),
+      @argparse.Command(
+        "decode",
+        about="Decode a SocketCAN or candump trace as CSV.",
+        positionals=[
+          @argparse.PositionArg(
+            "dbc",
+            about="Path to the DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+          @argparse.PositionArg(
+            "trace",
+            about="Path to the CAN trace file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ],
+      ),
     ],
     subcommand_required=true,
   )
@@ -42,8 +58,21 @@ async fn main {
     process_exit(2)
     return
   }
-  let mode = if name == "check" { @lib.CliCheck } else { @lib.CliList }
-  let output = @lib.run_cli(mode, path, source)
+  let output = if name == "decode" {
+    guard subcommand.values is { "trace": [trace_path], .. } else { return }
+    let trace_source : String? = Some(@fs.read_file(trace_path).text()) catch {
+      _ => None
+    }
+    guard trace_source is Some(trace_source) else {
+      @stdio.stderr.write("moondbc: unable to read \{trace_path}\n")
+      process_exit(2)
+      return
+    }
+    @lib.run_decode_cli(path, source, trace_path, trace_source)
+  } else {
+    let mode = if name == "check" { @lib.CliCheck } else { @lib.CliList }
+    @lib.run_cli(mode, path, source)
+  }
   if !output.stdout.is_empty() {
     @stdio.stdout.write(output.stdout)
   }

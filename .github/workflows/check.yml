@@ -32,6 +32,14 @@ jobs:
           moon test --target wasm --deny-warn
           moon test --target wasm-gc --deny-warn
           moon test --target js --deny-warn
+      - name: Test native CLI
+        if: runner.os == 'Linux'
+        run: |
+          moon check --target native --deny-warn
+          moon test --target native --deny-warn
+          moon run --target native cmd/moondbc -- check examples/vehicle.dbc | grep -q '^OK examples/vehicle.dbc$'
+          moon run --target native cmd/moondbc -- list examples/vehicle.dbc | grep -q '^00000123 extended ExtendedStatus'
+          moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Powertrain","Gear",1,1,"","Drive"'
       - name: Verify formatting and interfaces
         shell: bash
         run: |

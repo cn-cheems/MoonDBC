@@ -46,6 +46,7 @@ Inspect a real DBC file with the native command-line tool:
 ```text
 moon run --target native cmd/moondbc -- check examples/vehicle.dbc
 moon run --target native cmd/moondbc -- list examples/vehicle.dbc
+moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log
 ```
 
 ## Current scope
@@ -71,13 +72,13 @@ moon run --target native cmd/moondbc -- list examples/vehicle.dbc
 - Classical CAN and CAN FD SocketCAN/candump parsing, formatting, and direct decoding;
 - recoverable multi-frame trace decoding and CSV signal export;
 - recoverable diagnostics for malformed and misplaced declarations;
-- native `check` and `list` commands for real DBC files;
+- native `check`, `list`, and trace-to-CSV `decode` commands;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 
 ## Roadmap
 
-- CAN trace decoding commands and browser workbench.
+- browser workbench.
 
 ## Project origin
 

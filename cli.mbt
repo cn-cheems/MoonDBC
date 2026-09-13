@@ -98,6 +98,105 @@ fn cli_validation_issues(
 }
 
 ///|
+fn cli_can_frame_id_text(id : UInt, extended : Bool) -> String {
+  let chars : Array[Char] = []
+  append_padded_identifier(chars, id, extended)
+  String::from_array(chars)
+}
+
+///|
+fn cli_frame_text_error(error : CanFrameTextError) -> String {
+  match error {
+    CanFrameMissingSeparator => "CAN frame is missing '#'"
+    CanFrameEmptyIdentifier => "CAN frame identifier is empty"
+    CanFrameIdentifierTooLong(length) =>
+      "CAN frame identifier has \{length} hexadecimal digits"
+    CanFrameInvalidIdentifier(index, _) =>
+      "CAN frame identifier has an invalid character at offset \{index}"
+    CanFrameIdentifierOutOfRange(id) =>
+      "CAN frame identifier \{id} is out of range"
+    CanFrameOddPayloadLength(length) =>
+      "CAN payload has an odd hexadecimal length of \{length}"
+    CanFramePayloadTooLong(length) =>
+      "CAN payload has \{length} bytes; at most 64 are supported"
+    CanFrameInvalidPayload(index, _) =>
+      "CAN payload has an invalid character at offset \{index}"
+  }
+}
+
+///|
+fn cli_can_log_text_error(error : CanLogTextError) -> String {
+  match error {
+    CanLogInvalidFieldCount(count) =>
+      "CAN log record has \{count} fields; expected 1, 2, or 3"
+    CanLogInvalidTimestamp(timestamp) =>
+      "CAN log record has invalid timestamp \{timestamp}"
+    CanLogInvalidInterface(interface_name) =>
+      "CAN log record has invalid interface \{interface_name}"
+    CanLogMissingFdFlags => "CAN FD record is missing its flags digit"
+    CanLogInvalidFdFlags(flags) => "CAN FD record has invalid flags \{flags}"
+    CanLogFdFlagsOutOfRange(flags) => "CAN FD flags \{flags} are out of range"
+    CanLogTimestampWithoutInterface =>
+      "CAN log timestamp requires an interface name"
+    CanLogFrameTextError(error) => cli_frame_text_error(error)
+  }
+}
+
+///|
+fn cli_decode_error(error : DecodeError) -> String {
+  match error {
+    InvalidSignalLayout(start, length) =>
+      "invalid signal layout \{start}|\{length}"
+    FrameTooShort(required, available) =>
+      "signal requires \{required} bits but the frame has \{available}"
+  }
+}
+
+///|
+fn cli_frame_decode_error(error : FrameDecodeError) -> String {
+  match error {
+    UnknownMessage(id) => "unknown DBC message \{id}"
+    InvalidCanFrameIdentifier(id, extended) =>
+      "invalid \{if extended { "extended" } else { "standard" }} CAN identifier \{id}"
+    UnknownCanMessage(id, extended) =>
+      "unknown \{if extended { "extended" } else { "standard" }} CAN message \{cli_can_frame_id_text(id, extended)}"
+    PayloadTooShort(required, actual) =>
+      "message requires \{required} payload bytes but the frame has \{actual}"
+    MissingMultiplexer => "message has multiplexed signals but no multiplexer"
+    MultipleMultiplexers => "message has more than one multiplexer"
+    SignalDecodeFailed(signal, error) =>
+      "signal \{signal} could not be decoded: \{cli_decode_error(error)}"
+  }
+}
+
+///|
+fn cli_trace_error(error : TraceError) -> String {
+  match error {
+    TraceFrameTextError(error) => cli_frame_text_error(error)
+    TraceCanLogTextError(error) => cli_can_log_text_error(error)
+    TraceFrameDecodeError(error) => cli_frame_decode_error(error)
+  }
+}
+
+///|
+fn cli_trace_diagnostics(
+  path : String,
+  diagnostics : Array[TraceDiagnostic],
+) -> String {
+  let lines : Array[String] = []
+  for diagnostic in diagnostics {
+    lines.push(
+      "\{path}:\{diagnostic.line}: \{cli_trace_error(diagnostic.error)}",
+    )
+  }
+  if lines.is_empty() {
+    ""
+  } else {
+    "\{lines.join("\n")}\n"
+  }
+}
+
+///|
 fn cli_check(path : String, database : Database) -> CliOutput {
   let issues = database.validate()
   if !issues.is_empty() {
@@ -194,5 +293,53 @@ pub fn run_cli(mode : CliMode, path : String, source : StringView) -> CliOutput 
         },
       }
     }
+  }
+}
+
+///|
+/// Parse and validate a DBC database, decode a SocketCAN or candump trace, and
+/// return decoded signal rows as CSV. Valid records are retained when another
+/// trace line is malformed; diagnostics and a non-zero exit code report the
+/// partial failure.
+pub fn run_decode_cli(
+  dbc_path : String,
+  dbc_source : StringView,
+  trace_path : String,
+  trace_source : StringView,
+) -> CliOutput {
+  let parsed = parse(dbc_source)
+  if !parsed.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(dbc_path, parsed.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let issues = parsed.database.validate()
+  if !issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(dbc_path, issues),
+      exit_code: 1,
+    }
+  }
+  let decoded = parsed.database.decode_trace(trace_source)
+  let csv = match decoded.to_csv() {
+    Ok(value) => value
+    Err(error) =>
+      return {
+        stdout: "",
+        stderr: "\{trace_path}: unable to render CSV: \{cli_can_log_text_error(error)}\n",
+        exit_code: 1,
+      }
+  }
+  {
+    stdout: "\{csv}\r\n",
+    stderr: cli_trace_diagnostics(trace_path, decoded.diagnostics),
+    exit_code: if decoded.diagnostics.is_empty() {
+      0
+    } else {
+      1
+    },
   }
 }
