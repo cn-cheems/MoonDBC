@@ -18,6 +18,8 @@ pub fn run_decode_cli(String, StringView, String, StringView) -> CliOutput
 
 pub fn run_diff_cli(String, StringView, String, StringView) -> CliOutput
 
+pub fn run_encode_cli(String, StringView, String, Array[String]) -> CliOutput
+
 pub fn run_generate_cli(String, StringView) -> CliOutput
 
 // Errors

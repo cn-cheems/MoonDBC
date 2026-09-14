@@ -170,6 +170,60 @@ fn cli_frame_decode_error(error : FrameDecodeError) -> String {
 }
 
 ///|
+fn cli_raw_value(value : RawValue) -> String {
+  match value {
+    UnsignedRaw(value) => value.to_string()
+    SignedRaw(value) => value.to_string()
+  }
+}
+
+///|
+fn cli_encode_error(error : EncodeError) -> String {
+  match error {
+    EncodeInvalidLayout(start, length) =>
+      "invalid signal layout \{start}|\{length}"
+    EncodeFrameTooShort(required, available) =>
+      "signal requires \{required} bits but the frame has \{available}"
+    ValueKindMismatch(expected, actual) =>
+      "expected a \{cli_value_kind(expected)} raw value, received \{cli_raw_value(actual)}"
+    RawValueOutOfRange(value, length) =>
+      "raw value \{cli_raw_value(value)} does not fit in \{length} bits"
+    InvalidFactor(factor) => "signal has invalid factor \{factor}"
+    NonFinitePhysicalValue(value) => "physical value \{value} is not finite"
+    PhysicalValueOutOfRange(value, minimum, maximum) =>
+      "physical value \{value} is outside [\{minimum},\{maximum}]"
+    PhysicalRawOutOfRange(value, length) =>
+      "scaled raw value \{value} does not fit in \{length} bits"
+  }
+}
+
+///|
+fn cli_frame_encode_error(error : FrameEncodeError) -> String {
+  match error {
+    FrameEncodeUnknownMessage(id) => "unknown DBC message \{id}"
+    FrameEncodeInvalidCanIdentifier(id, extended) =>
+      "invalid \{if extended { "extended" } else { "standard" }} CAN identifier \{id}"
+    FrameEncodeUnknownCanMessage(id, extended) =>
+      "unknown \{if extended { "extended" } else { "standard" }} CAN message \{cli_can_frame_id_text(id, extended)}"
+    FrameEncodeInvalidPayloadSize(size) =>
+      "message has invalid payload size \{size}"
+    FrameEncodeUnknownSignal(signal) => "unknown signal \{signal}"
+    FrameEncodeDuplicateSignal(signal) =>
+      "signal \{signal} is assigned more than once"
+    FrameEncodeMissingSignal(signal) => "signal \{signal} is not assigned"
+    FrameEncodeInactiveSignal(signal, selector) =>
+      "signal \{signal} is inactive for multiplex selector \{selector}"
+    FrameEncodeMissingMultiplexer =>
+      "message has multiplexed signals but no multiplexer"
+    FrameEncodeMultipleMultiplexers => "message has more than one multiplexer"
+    FrameSignalEncodeFailed(signal, error) =>
+      "signal \{signal} could not be encoded: \{cli_encode_error(error)}"
+    FrameMultiplexerDecodeFailed(signal, error) =>
+      "multiplexer \{signal} could not be read after encoding: \{cli_decode_error(error)}"
+  }
+}
+
+///|
 fn cli_trace_error(error : TraceError) -> String {
   match error {
     TraceFrameTextError(error) => cli_frame_text_error(error)
@@ -426,5 +480,92 @@ pub fn run_generate_cli(path : String, source : StringView) -> CliOutput {
     stdout: "\{parsed.database.generate_moonbit_constants()}\n",
     stderr: "",
     exit_code: 0,
+  }
+}
+
+///|
+fn cli_parse_assignment(text : String) -> Result[SignalAssignment, String] {
+  let (name_text, value_text) = match text.view().split_once("=") {
+    Some(parts) => parts
+    None => return Err("invalid assignment '\{text}'; expected NAME=NUMBER")
+  }
+  let name = name_text.trim()
+  let value = value_text.trim()
+  if name.is_empty() || value.is_empty() {
+    return Err("invalid assignment '\{text}'; expected NAME=NUMBER")
+  }
+  let physical = match parse_double(value) {
+    Some(value) => value
+    None => return Err("assignment '\{text}' has an invalid number")
+  }
+  Ok({ name: name.to_owned(), physical, })
+}
+
+///|
+/// Parse and validate a DBC source, encode named physical values into a CAN
+/// frame, and render canonical SocketCAN text. The CAN identifier uses one to
+/// three hexadecimal digits for a standard frame and four to eight for an
+/// extended frame.
+pub fn run_encode_cli(
+  path : String,
+  source : StringView,
+  identifier : String,
+  assignment_texts : Array[String],
+) -> CliOutput {
+  let parsed = parse(source)
+  if !parsed.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(path, parsed.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let issues = parsed.database.validate()
+  if !issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(path, issues),
+      exit_code: 1,
+    }
+  }
+  let selector = match parse_can_frame("\{identifier}#") {
+    Ok(frame) => frame
+    Err(error) =>
+      return {
+        stdout: "",
+        stderr: "moondbc: invalid CAN identifier '\{identifier}': \{cli_frame_text_error(error)}\n",
+        exit_code: 1,
+      }
+  }
+  let assignments : Array[SignalAssignment] = []
+  for text in assignment_texts {
+    match cli_parse_assignment(text) {
+      Ok(assignment) => assignments.push(assignment)
+      Err(message) =>
+        return { stdout: "", stderr: "moondbc: \{message}\n", exit_code: 1, }
+    }
+  }
+  let frame = match
+    parsed.database.encode_can_frame(
+      selector.id,
+      selector.is_extended_frame,
+      assignments,
+    ) {
+    Ok(frame) => frame
+    Err(error) =>
+      return {
+        stdout: "",
+        stderr: "moondbc: \{cli_frame_encode_error(error)}\n",
+        exit_code: 1,
+      }
+  }
+  match frame.to_text() {
+    Ok(text) => { stdout: "\{text}\n", stderr: "", exit_code: 0, }
+    Err(error) =>
+      {
+        stdout: "",
+        stderr: "moondbc: unable to render CAN frame: \{cli_frame_text_error(error)}\n",
+        exit_code: 1,
+      }
   }
 }

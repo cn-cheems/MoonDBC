@@ -69,6 +69,28 @@ fn command() -> @argparse.Command {
           ),
         ],
       ),
+      @argparse.Command(
+        "encode",
+        about="Encode physical signal values as a SocketCAN frame.",
+        positionals=[
+          @argparse.PositionArg(
+            "dbc",
+            about="Path to the DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+          @argparse.PositionArg(
+            "id",
+            about="Hex CAN identifier; pad to four digits for an extended frame.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+          @argparse.PositionArg(
+            "assignment",
+            about="Physical signal value in NAME=NUMBER form.",
+            num_args=@argparse.ValueRange(lower=1),
+            allow_hyphen_values=true,
+          ),
+        ],
+      ),
     ],
     subcommand_required=true,
   )
@@ -119,6 +141,12 @@ async fn main {
         return
       }
       @lib.run_decode_cli(path, source, trace_path, trace_source)
+    } else if name == "encode" {
+      guard subcommand.values
+        is { "id": [identifier], "assignment": assignments, .. } else {
+        return
+      }
+      @lib.run_encode_cli(path, source, identifier, assignments)
     } else if name == "generate" {
       @lib.run_generate_cli(path, source)
     } else {

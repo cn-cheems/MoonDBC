@@ -263,3 +263,77 @@ test "reject invalid DBC input during generation" {
     "invalid.dbc: signals First and Second overlap in message 12C standard\n",
   )
 }
+
+///|
+test "encode physical values as a SocketCAN frame" {
+  let source =
+    #|BO_ 256 Powertrain: 8 ECU
+    #| SG_ EngineSpeed : 0|16@1+ (0.125,0) [0|8000] "rpm" Dashboard
+    #| SG_ CoolantTemp : 23|8@0- (1,-40) [-40|215] "degC" Dashboard
+    #| SG_ Gear : 32|8@1+ (1,0) [0|7] "" Dashboard
+  let output = @moondbc.run_encode_cli("vehicle.dbc", source, "100", [
+    "Gear=1", "CoolantTemp=85", "EngineSpeed=1000",
+  ])
+  assert_eq(output, {
+    stdout: "100#401F7D0001000000\n",
+    stderr: "",
+    exit_code: 0,
+  })
+  let frame = @moondbc.parse_can_frame(output.stdout).unwrap()
+  let decoded = @moondbc.parse(source).database.decode_can_frame(frame).unwrap()
+  assert_eq(decoded.signals[0].physical, 1000.0)
+  assert_eq(decoded.signals[1].physical, 85.0)
+  assert_eq(decoded.signals[2].physical, 1.0)
+}
+
+///|
+test "encode an extended CAN frame from its bus identifier" {
+  let output = @moondbc.run_encode_cli(
+    "network.dbc",
+    (
+      #|BO_ 2147483939 ExtendedStatus: 1 ECU
+      #| SG_ State : 0|8@1+ (1,0) [0|255] "" Dashboard
+    ),
+    "00000123",
+    ["State=5"],
+  )
+  assert_eq(output, { stdout: "00000123#05\n", stderr: "", exit_code: 0, })
+}
+
+///|
+test "reject malformed command-line signal assignments" {
+  let output = @moondbc.run_encode_cli(
+    "vehicle.dbc",
+    (
+      #|BO_ 256 Status: 1 ECU
+      #| SG_ State : 0|8@1+ (1,0) [0|255] "" Dashboard
+    ),
+    "100",
+    ["State"],
+  )
+  assert_eq(output.stdout, "")
+  assert_eq(output.exit_code, 1)
+  assert_eq(
+    output.stderr,
+    "moondbc: invalid assignment 'State'; expected NAME=NUMBER\n",
+  )
+}
+
+///|
+test "identify a signal whose physical value cannot be encoded" {
+  let output = @moondbc.run_encode_cli(
+    "vehicle.dbc",
+    (
+      #|BO_ 256 Status: 1 ECU
+      #| SG_ State : 0|8@1+ (1,0) [0|10] "" Dashboard
+    ),
+    "100",
+    ["State=11"],
+  )
+  assert_eq(output.stdout, "")
+  assert_eq(output.exit_code, 1)
+  assert_eq(
+    output.stderr,
+    "moondbc: signal State could not be encoded: physical value 11 is outside [0,10]\n",
+  )
+}
