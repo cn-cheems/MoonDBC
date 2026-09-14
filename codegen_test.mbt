@@ -163,3 +163,19 @@ test "empty databases still generate a valid source header" {
     "// MoonDBC static CAN metadata.",
   )
 }
+
+///|
+test "generate the bus identifier for an extended message" {
+  let database = @moondbc.parse("BO_ 2147483939 ExtendedStatus: 1 ECU").database
+  assert_eq(
+    database.generate_moonbit_constants(),
+    (
+      #|// MoonDBC static CAN metadata.
+      #|
+      #|/// Message ExtendedStatus (extended 291; DBC id 2147483939).
+      #|pub const DBC_EXTENDEDSTATUS_2147483939_ID : UInt = 291U
+      #|pub const DBC_EXTENDEDSTATUS_2147483939_IS_EXTENDED_FRAME : Bool = true
+      #|pub const DBC_EXTENDEDSTATUS_2147483939_PAYLOAD_SIZE : Int = 1
+    ),
+  )
+}

@@ -401,3 +401,30 @@ pub fn run_diff_cli(
     },
   }
 }
+
+///|
+/// Parse and validate a DBC source, then generate standalone MoonBit constants
+/// for build-time integration.
+pub fn run_generate_cli(path : String, source : StringView) -> CliOutput {
+  let parsed = parse(source)
+  if !parsed.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(path, parsed.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let issues = parsed.database.validate()
+  if !issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(path, issues),
+      exit_code: 1,
+    }
+  }
+  {
+    stdout: "\{parsed.database.generate_moonbit_constants()}\n",
+    stderr: "",
+    exit_code: 0,
+  }
+}

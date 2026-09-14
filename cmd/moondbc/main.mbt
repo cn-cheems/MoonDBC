@@ -58,6 +58,17 @@ fn command() -> @argparse.Command {
           ),
         ],
       ),
+      @argparse.Command(
+        "generate",
+        about="Generate standalone MoonBit constants from a DBC file.",
+        positionals=[
+          @argparse.PositionArg(
+            "dbc",
+            about="Path to the DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ],
+      ),
     ],
     subcommand_required=true,
   )
@@ -108,6 +119,8 @@ async fn main {
         return
       }
       @lib.run_decode_cli(path, source, trace_path, trace_source)
+    } else if name == "generate" {
+      @lib.run_generate_cli(path, source)
     } else {
       let mode = if name == "check" { @lib.CliCheck } else { @lib.CliList }
       @lib.run_cli(mode, path, source)

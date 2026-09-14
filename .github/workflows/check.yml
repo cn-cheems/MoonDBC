@@ -47,6 +47,7 @@ jobs:
           test "$diff_status" -eq 3
           grep -q 'Breaking changes: 1' /tmp/moondbc-report.md
           grep -q '1 breaking change(s)' /tmp/moondbc-report.err
+          moon run --target native cmd/moondbc -- generate examples/vehicle.dbc | grep -q 'pub const DBC_POWERTRAIN_256_ID : UInt = 256U'
       - name: Verify formatting and interfaces
         shell: bash
         run: |
