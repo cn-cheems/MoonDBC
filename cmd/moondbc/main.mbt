@@ -42,6 +42,22 @@ fn command() -> @argparse.Command {
           ),
         ],
       ),
+      @argparse.Command(
+        "diff",
+        about="Compare two DBC files and report compatibility.",
+        positionals=[
+          @argparse.PositionArg(
+            "before",
+            about="Path to the previous DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+          @argparse.PositionArg(
+            "after",
+            about="Path to the newer DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ],
+      ),
     ],
     subcommand_required=true,
   )
@@ -51,27 +67,51 @@ fn command() -> @argparse.Command {
 async fn main {
   let matches = command().parse(argv=@env.args()[1:])
   guard matches.subcommand is Some((name, subcommand)) else { return }
-  guard subcommand.values is { "dbc": [path], .. } else { return }
-  let source : String? = Some(@fs.read_file(path).text()) catch { _ => None }
-  guard source is Some(source) else {
-    @stdio.stderr.write("moondbc: unable to read \{path}\n")
-    process_exit(2)
-    return
-  }
-  let output = if name == "decode" {
-    guard subcommand.values is { "trace": [trace_path], .. } else { return }
-    let trace_source : String? = Some(@fs.read_file(trace_path).text()) catch {
+  let output = if name == "diff" {
+    guard subcommand.values
+      is { "before": [before_path], "after": [after_path], .. } else {
+      return
+    }
+    let before_source : String? = Some(@fs.read_file(before_path).text()) catch {
       _ => None
     }
-    guard trace_source is Some(trace_source) else {
-      @stdio.stderr.write("moondbc: unable to read \{trace_path}\n")
+    guard before_source is Some(before_source) else {
+      @stdio.stderr.write("moondbc: unable to read \{before_path}\n")
       process_exit(2)
       return
     }
-    @lib.run_decode_cli(path, source, trace_path, trace_source)
+    let after_source : String? = Some(@fs.read_file(after_path).text()) catch {
+      _ => None
+    }
+    guard after_source is Some(after_source) else {
+      @stdio.stderr.write("moondbc: unable to read \{after_path}\n")
+      process_exit(2)
+      return
+    }
+    @lib.run_diff_cli(before_path, before_source, after_path, after_source)
   } else {
-    let mode = if name == "check" { @lib.CliCheck } else { @lib.CliList }
-    @lib.run_cli(mode, path, source)
+    guard subcommand.values is { "dbc": [path], .. } else { return }
+    let source : String? = Some(@fs.read_file(path).text()) catch { _ => None }
+    guard source is Some(source) else {
+      @stdio.stderr.write("moondbc: unable to read \{path}\n")
+      process_exit(2)
+      return
+    }
+    if name == "decode" {
+      guard subcommand.values is { "trace": [trace_path], .. } else { return }
+      let trace_source : String? = Some(@fs.read_file(trace_path).text()) catch {
+        _ => None
+      }
+      guard trace_source is Some(trace_source) else {
+        @stdio.stderr.write("moondbc: unable to read \{trace_path}\n")
+        process_exit(2)
+        return
+      }
+      @lib.run_decode_cli(path, source, trace_path, trace_source)
+    } else {
+      let mode = if name == "check" { @lib.CliCheck } else { @lib.CliList }
+      @lib.run_cli(mode, path, source)
+    }
   }
   if !output.stdout.is_empty() {
     @stdio.stdout.write(output.stdout)

@@ -47,7 +47,11 @@ Inspect a real DBC file with the native command-line tool:
 moon run --target native cmd/moondbc -- check examples/vehicle.dbc
 moon run --target native cmd/moondbc -- list examples/vehicle.dbc
 moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log
+moon run --target native cmd/moondbc -- diff examples/vehicle.dbc examples/vehicle-v2.dbc
 ```
+
+`diff` writes a Markdown compatibility report. It exits with status `3` when
+breaking changes are present, so the command can act as a CI compatibility gate.
 
 ## Current scope
 
@@ -72,7 +76,7 @@ moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/veh
 - Classical CAN and CAN FD SocketCAN/candump parsing, formatting, and direct decoding;
 - recoverable multi-frame trace decoding and CSV signal export;
 - recoverable diagnostics for malformed and misplaced declarations;
-- native `check`, `list`, and trace-to-CSV `decode` commands;
+- native `check`, `list`, trace-to-CSV `decode`, and compatibility `diff` commands;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 

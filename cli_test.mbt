@@ -164,3 +164,59 @@ test "reject an invalid DBC before decoding a trace" {
     "invalid.dbc: signals First and Second overlap in message 12C standard\n",
   )
 }
+
+///|
+test "accept a backward-compatible DBC revision" {
+  let output = @moondbc.run_diff_cli(
+    "before.dbc",
+    "BO_ 501 Existing: 1 ECU",
+    "after.dbc",
+    (
+      #|BO_ 501 Existing: 1 ECU
+      #|BO_ 502 Added: 1 ECU
+    ),
+  )
+  assert_eq(output.exit_code, 0)
+  assert_eq(output.stderr, "")
+  assert_eq(
+    output.stdout,
+    [
+      "# DBC Compatibility Report", "", "- Breaking changes: 0", "- Non-breaking changes: 1",
+      "- Informational changes: 0", "", "## Changes", "", "- **Non-breaking**: Message 502 (Added) was added.",
+      "",
+    ].join("\n"),
+  )
+}
+
+///|
+test "fail a compatibility gate on breaking changes" {
+  let output = @moondbc.run_diff_cli(
+    "before.dbc", "BO_ 503 Removed: 1 ECU", "after.dbc", "BO_ 504 Added: 1 ECU",
+  )
+  assert_eq(output.exit_code, 3)
+  assert_eq(
+    output.stderr,
+    "after.dbc: 1 breaking change(s) compared with before.dbc\n",
+  )
+  assert_eq(
+    output.stdout,
+    [
+      "# DBC Compatibility Report", "", "- Breaking changes: 1", "- Non-breaking changes: 1",
+      "- Informational changes: 0", "", "## Changes", "", "- **Breaking**: Message 503 (Removed) was removed.",
+      "- **Non-breaking**: Message 504 (Added) was added.", "",
+    ].join("\n"),
+  )
+}
+
+///|
+test "report which DBC revision is malformed" {
+  let output = @moondbc.run_diff_cli(
+    "before.dbc", "BO_ 501 Existing: 1 ECU", "after.dbc", "BO_ invalid",
+  )
+  assert_eq(output.stdout, "")
+  assert_eq(output.exit_code, 1)
+  assert_eq(
+    output.stderr,
+    "after.dbc:1:1 [DBC002] message declaration is missing ':'\n",
+  )
+}

@@ -343,3 +343,61 @@ pub fn run_decode_cli(
     },
   }
 }
+
+///|
+/// Parse and validate two DBC sources, then render their compatibility report
+/// as Markdown. Breaking changes use exit code 3 so CI can distinguish an
+/// incompatible database revision from malformed input.
+pub fn run_diff_cli(
+  before_path : String,
+  before_source : StringView,
+  after_path : String,
+  after_source : StringView,
+) -> CliOutput {
+  let before = parse(before_source)
+  if !before.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(before_path, before.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let before_issues = before.database.validate()
+  if !before_issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(before_path, before_issues),
+      exit_code: 1,
+    }
+  }
+  let after = parse(after_source)
+  if !after.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(after_path, after.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let after_issues = after.database.validate()
+  if !after_issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(after_path, after_issues),
+      exit_code: 1,
+    }
+  }
+  let report = before.database.compatibility_report(after.database)
+  {
+    stdout: "\{report.to_markdown()}\n",
+    stderr: if report.breaking_count == 0 {
+      ""
+    } else {
+      "\{after_path}: \{report.breaking_count} breaking change(s) compared with \{before_path}\n"
+    },
+    exit_code: if report.breaking_count == 0 {
+      0
+    } else {
+      3
+    },
+  }
+}

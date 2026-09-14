@@ -1,0 +1,17 @@
+VERSION "2.0"
+
+BU_: ECU Dashboard Backup
+
+BO_ 256 Powertrain: 8 ECU
+ SG_ EngineSpeed : 0|16@1+ (0.25,0) [0|16000] "rpm" Dashboard
+ SG_ CoolantTemp : 23|8@0- (1,-40) [-40|215] "degC" Dashboard
+ SG_ Gear : 32|8@1+ (1,0) [0|7] "" Dashboard
+ SG_ BatteryVoltage : 40|16@1+ (0.01,0) [0|655.35] "V" Dashboard
+
+VAL_ 256 Gear 0 "Neutral" 1 "Drive" 2 "Reverse";
+CM_ BO_ 256 "Powertrain status";
+
+BO_ 2147483939 ExtendedStatus: 1 ECU
+ SG_ State : 0|8@1+ (1,0) [0|255] "" Dashboard
+
+BO_TX_BU_ 2147483939 : ECU,Backup;

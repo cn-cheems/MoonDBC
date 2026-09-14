@@ -40,6 +40,13 @@ jobs:
           moon run --target native cmd/moondbc -- check examples/vehicle.dbc | grep -q '^OK examples/vehicle.dbc$'
           moon run --target native cmd/moondbc -- list examples/vehicle.dbc | grep -q '^00000123 extended ExtendedStatus'
           moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Powertrain","Gear",1,1,"","Drive"'
+          set +e
+          moon run --target native cmd/moondbc -- diff examples/vehicle.dbc examples/vehicle-v2.dbc > /tmp/moondbc-report.md 2> /tmp/moondbc-report.err
+          diff_status=$?
+          set -e
+          test "$diff_status" -eq 3
+          grep -q 'Breaking changes: 1' /tmp/moondbc-report.md
+          grep -q '1 breaking change(s)' /tmp/moondbc-report.err
       - name: Verify formatting and interfaces
         shell: bash
         run: |
