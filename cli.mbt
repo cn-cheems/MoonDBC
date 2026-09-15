@@ -224,6 +224,28 @@ fn cli_frame_encode_error(error : FrameEncodeError) -> String {
 }
 
 ///|
+fn cli_write_error(error : DbcWriteError) -> String {
+  match error {
+    DbcWriteInvalidToken(context, text) =>
+      "\{context} '\{text}' is not a valid DBC token"
+    DbcWriteInvalidQuotedText(context, _) =>
+      "\{context} contains text that cannot be quoted in DBC syntax"
+    DbcWriteInvalidPayloadSize(id, size) =>
+      "message \{cli_dbc_id_text(id)} has invalid payload size \{size}"
+    DbcWriteNonFiniteSignalNumber(id, signal, field) =>
+      "signal \{signal} in message \{cli_dbc_id_text(id)} has a non-finite \{field}"
+    DbcWriteNegativeMultiplexValue(id, signal, value) =>
+      "signal \{signal} in message \{cli_dbc_id_text(id)} has negative multiplex value \{value}"
+    DbcWriteEmptyValueTable(id, signal) =>
+      "signal \{signal} in message \{cli_dbc_id_text(id)} has an empty value table"
+    DbcWriteDuplicateTransmitter(id, transmitter) =>
+      "message \{cli_dbc_id_text(id)} repeats transmitter \{transmitter}"
+    DbcWriteInvalidMessageIdentifier(id) =>
+      "message \{id} has an invalid DBC identifier"
+  }
+}
+
+///|
 fn cli_trace_error(error : TraceError) -> String {
   match error {
     TraceFrameTextError(error) => cli_frame_text_error(error)
@@ -480,6 +502,90 @@ pub fn run_generate_cli(path : String, source : StringView) -> CliOutput {
     stdout: "\{parsed.database.generate_moonbit_constants()}\n",
     stderr: "",
     exit_code: 0,
+  }
+}
+
+///|
+fn cli_format_line_is_supported(line : StringView) -> Bool {
+  line.is_empty() ||
+  line.has_prefix("VERSION") ||
+  line.has_prefix("BU_:") ||
+  line.has_prefix("BO_TX_BU_ ") ||
+  line.has_prefix("BO_ ") ||
+  line.has_prefix("SG_ ") ||
+  line.has_prefix("CM_ ") ||
+  line.has_prefix("VAL_ ")
+}
+
+///|
+fn cli_first_unsupported_format_line(source : StringView) -> Int? {
+  let mut line_number = 0
+  for raw_line in source.split("\n") {
+    line_number += 1
+    let line = raw_line.trim(chars=" \t\r")
+    if !cli_format_line_is_supported(line) {
+      return Some(line_number)
+    }
+  }
+  None
+}
+
+///|
+/// Parse and validate a DBC source, then emit the deterministic representation
+/// used by `Database::to_dbc`. Check mode produces no standard output and uses
+/// exit code 4 when the input differs from that representation. Unsupported
+/// declarations are rejected so formatting never silently removes source data.
+pub fn run_format_cli(
+  path : String,
+  source : StringView,
+  check_only : Bool,
+) -> CliOutput {
+  match cli_first_unsupported_format_line(source) {
+    Some(line) =>
+      return {
+        stdout: "",
+        stderr: "\{path}:\{line}:1 [DBC019] unsupported declaration cannot be formatted safely\n",
+        exit_code: 1,
+      }
+    None => ()
+  }
+  let parsed = parse(source)
+  if !parsed.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(path, parsed.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let issues = parsed.database.validate()
+  if !issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(path, issues),
+      exit_code: 1,
+    }
+  }
+  let formatted = match parsed.database.to_dbc() {
+    Ok(text) => "\{text}\n"
+    Err(error) =>
+      return {
+        stdout: "",
+        stderr: "\{path}: unable to format DBC: \{cli_write_error(error)}\n",
+        exit_code: 1,
+      }
+  }
+  if check_only {
+    if source == formatted {
+      { stdout: "", stderr: "", exit_code: 0, }
+    } else {
+      {
+        stdout: "",
+        stderr: "\{path}: formatting changes required\n",
+        exit_code: 4,
+      }
+    }
+  } else {
+    { stdout: formatted, stderr: "", exit_code: 0, }
   }
 }
 

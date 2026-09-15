@@ -7,10 +7,11 @@ BO_ 256 Powertrain: 8 ECU
  SG_ CoolantTemp : 23|8@0- (1,-40) [-40|215] "degC" Dashboard
  SG_ Gear : 32|8@1+ (1,0) [0|7] "" Dashboard
 
-VAL_ 256 Gear 0 "Neutral" 1 "Drive" 2 "Reverse";
-CM_ BO_ 256 "Powertrain status";
-
 BO_ 2147483939 ExtendedStatus: 1 ECU
  SG_ State : 0|8@1+ (1,0) [0|255] "" Dashboard
 
 BO_TX_BU_ 2147483939 : ECU,Backup;
+
+CM_ BO_ 256 "Powertrain status";
+
+VAL_ 256 Gear 0 "Neutral" 1 "Drive" 2 "Reverse";

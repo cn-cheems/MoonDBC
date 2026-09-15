@@ -337,3 +337,97 @@ test "identify a signal whose physical value cannot be encoded" {
     "moondbc: signal State could not be encoded: physical value 11 is outside [0,10]\n",
   )
 }
+
+///|
+test "format DBC text deterministically and preserve its model" {
+  let source =
+    #|VERSION "1.0"
+    #|BU_: ECU Dashboard
+    #|BO_ 256 Status: 1 ECU
+    #| SG_ State : 0|8@1+ (1,0) [0|255] "" Dashboard
+    #|VAL_ 256 State 0 "Off" 1 "On";
+  let output = @moondbc.run_format_cli("vehicle.dbc", source, false)
+  assert_eq(output.exit_code, 0)
+  assert_eq(output.stderr, "")
+  assert_eq(
+    output.stdout,
+    (
+      #|VERSION "1.0"
+      #|
+      #|BU_: ECU Dashboard
+      #|
+      #|BO_ 256 Status: 1 ECU
+      #| SG_ State : 0|8@1+ (1,0) [0|255] "" Dashboard
+      #|
+      #|VAL_ 256 State 0 "Off" 1 "On";
+      #|
+    ),
+  )
+  let original = @moondbc.parse(source).database
+  let formatted = @moondbc.parse(output.stdout).database
+  assert_eq(formatted, original)
+  assert_eq(
+    @moondbc.run_format_cli("vehicle.dbc", output.stdout, false).stdout,
+    output.stdout,
+  )
+}
+
+///|
+test "accept canonical DBC text in format check mode" {
+  let source =
+    #|BU_: ECU
+    #|
+    #|BO_ 256 Status: 1 ECU
+    #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
+    #|
+  assert_eq(@moondbc.run_format_cli("vehicle.dbc", source, true), {
+    stdout: "",
+    stderr: "",
+    exit_code: 0,
+  })
+}
+
+///|
+test "report unformatted DBC text with a dedicated exit code" {
+  let output = @moondbc.run_format_cli(
+    "vehicle.dbc",
+    (
+      #|BU_: ECU
+      #|BO_ 256 Status: 1 ECU
+      #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
+    ),
+    true,
+  )
+  assert_eq(output.stdout, "")
+  assert_eq(output.stderr, "vehicle.dbc: formatting changes required\n")
+  assert_eq(output.exit_code, 4)
+}
+
+///|
+test "reject an invalid DBC before formatting" {
+  let output = @moondbc.run_format_cli("broken.dbc", "BO_ invalid", false)
+  assert_eq(output.stdout, "")
+  assert_eq(
+    output.stderr,
+    "broken.dbc:1:1 [DBC002] message declaration is missing ':'\n",
+  )
+  assert_eq(output.exit_code, 1)
+}
+
+///|
+test "never discard unsupported declarations while formatting" {
+  let output = @moondbc.run_format_cli(
+    "attributes.dbc",
+    (
+      #|BU_: ECU
+      #|BA_DEF_ "BusType" STRING ;
+    ),
+    false,
+  )
+  assert_eq(output.stdout, "")
+  assert_eq(
+    output.stderr,
+    "attributes.dbc:2:1 [DBC019] unsupported declaration cannot be formatted safely\n",
+  )
+  assert_eq(output.exit_code, 1)
+}

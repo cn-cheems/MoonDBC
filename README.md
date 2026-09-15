@@ -48,6 +48,8 @@ moon run --target native cmd/moondbc -- check examples/vehicle.dbc
 moon run --target native cmd/moondbc -- list examples/vehicle.dbc
 moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log
 moon run --target native cmd/moondbc -- encode examples/vehicle.dbc 100 EngineSpeed=1000 CoolantTemp=85 Gear=1
+moon run --target native cmd/moondbc -- format examples/vehicle.dbc
+moon run --target native cmd/moondbc -- format --check examples/vehicle.dbc
 moon run --target native cmd/moondbc -- diff examples/vehicle.dbc examples/vehicle-v2.dbc
 moon run --target native cmd/moondbc -- generate examples/vehicle.dbc > vehicle_constants.mbt
 ```
@@ -55,6 +57,12 @@ moon run --target native cmd/moondbc -- generate examples/vehicle.dbc > vehicle_
 `encode` accepts a hexadecimal bus identifier followed by one or more
 `NAME=NUMBER` physical signal assignments. Use one to three identifier digits
 for a standard frame and pad to at least four digits for an extended frame.
+
+`format` writes a deterministic DBC representation to standard output. Its
+`--check` mode produces no output when the file is canonical and exits with
+status `4` when formatting changes are required, making it suitable for CI.
+Declarations outside the currently supported syntax are rejected rather than
+silently removed.
 
 `diff` writes a Markdown compatibility report. It exits with status `3` when
 breaking changes are present, so the command can act as a CI compatibility gate.
@@ -82,7 +90,7 @@ breaking changes are present, so the command can act as a CI compatibility gate.
 - Classical CAN and CAN FD SocketCAN/candump parsing, formatting, and direct decoding;
 - recoverable multi-frame trace decoding and CSV signal export;
 - recoverable diagnostics for malformed and misplaced declarations;
-- native `check`, `list`, trace-to-CSV `decode`, physical-value `encode`, compatibility `diff`, and MoonBit `generate` commands;
+- native `check`, `list`, trace-to-CSV `decode`, physical-value `encode`, deterministic `format`, compatibility `diff`, and MoonBit `generate` commands;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 

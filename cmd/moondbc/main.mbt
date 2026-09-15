@@ -91,6 +91,25 @@ fn command() -> @argparse.Command {
           ),
         ],
       ),
+      @argparse.Command(
+        "format",
+        about="Write a DBC file in MoonDBC's deterministic format.",
+        flags=[
+          @argparse.FlagArg(
+            "check",
+            short='c',
+            long="check",
+            about="Exit with status 4 instead of printing when changes are required.",
+          ),
+        ],
+        positionals=[
+          @argparse.PositionArg(
+            "dbc",
+            about="Path to the DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ],
+      ),
     ],
     subcommand_required=true,
   )
@@ -147,6 +166,9 @@ async fn main {
         return
       }
       @lib.run_encode_cli(path, source, identifier, assignments)
+    } else if name == "format" {
+      let check_only = subcommand.flags is { "check": true, .. }
+      @lib.run_format_cli(path, source, check_only)
     } else if name == "generate" {
       @lib.run_generate_cli(path, source)
     } else {
