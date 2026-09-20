@@ -60,6 +60,10 @@ fn cli_validation_issue(issue : ValidationIssue) -> String {
       "message \{cli_dbc_id_text(id)} repeats signal \{signal}"
     InvalidSignalLayoutIssue(id, signal, start, length) =>
       "signal \{signal} in message \{cli_dbc_id_text(id)} has invalid layout \{start}|\{length}"
+    InvalidSignalValueTypeIssue(id, signal, value_type, length) =>
+      "signal \{signal} in message \{cli_dbc_id_text(id)} declares \{cli_signal_value_type(value_type)} with \{length} bits"
+    FloatingMultiplexerIssue(id, signal, value_type) =>
+      "multiplexer \{signal} in message \{cli_dbc_id_text(id)} cannot use \{cli_signal_value_type(value_type)}"
     SignalOutsidePayloadIssue(id, signal) =>
       "signal \{signal} in message \{cli_dbc_id_text(id)} exceeds its payload"
     InvalidScaleIssue(id, signal, factor, offset) =>
@@ -174,6 +178,7 @@ fn cli_raw_value(value : RawValue) -> String {
   match value {
     UnsignedRaw(value) => value.to_string()
     SignedRaw(value) => value.to_string()
+    FloatRaw(value) => value.to_string()
   }
 }
 
@@ -186,6 +191,8 @@ fn cli_encode_error(error : EncodeError) -> String {
       "signal requires \{required} bits but the frame has \{available}"
     ValueKindMismatch(expected, actual) =>
       "expected a \{cli_value_kind(expected)} raw value, received \{cli_raw_value(actual)}"
+    SignalValueTypeMismatch(expected, actual) =>
+      "expected a \{cli_signal_value_type(expected)} raw value, received \{cli_raw_value(actual)}"
     RawValueOutOfRange(value, length) =>
       "raw value \{cli_raw_value(value)} does not fit in \{length} bits"
     InvalidFactor(factor) => "signal has invalid factor \{factor}"
@@ -312,6 +319,24 @@ fn cli_value_kind(kind : ValueKind) -> String {
 }
 
 ///|
+fn cli_signal_value_type(value_type : SignalValueType) -> String {
+  match value_type {
+    Integer => "integer"
+    Float32 => "float32"
+    Float64 => "float64"
+  }
+}
+
+///|
+fn cli_signal_storage(signal : Signal) -> String {
+  match signal.value_type {
+    Integer => cli_value_kind(signal.value_kind)
+    Float32 => "float32"
+    Float64 => "float64"
+  }
+}
+
+///|
 fn cli_multiplex(role : MultiplexRole) -> String {
   match role {
     Plain => "plain"
@@ -331,7 +356,7 @@ fn cli_list(database : Database) -> String {
     for signal in message.signals {
       let unit = if signal.unit.is_empty() { "-" } else { signal.unit }
       lines.push(
-        "  \{signal.name}: \{signal.start_bit}|\{signal.bit_length}, \{cli_byte_order(signal.byte_order)}, \{cli_value_kind(signal.value_kind)}, factor=\{signal.factor}, offset=\{signal.offset}, unit=\{unit}, \{cli_multiplex(signal.multiplex)}",
+        "  \{signal.name}: \{signal.start_bit}|\{signal.bit_length}, \{cli_byte_order(signal.byte_order)}, \{cli_signal_storage(signal)}, factor=\{signal.factor}, offset=\{signal.offset}, unit=\{unit}, \{cli_multiplex(signal.multiplex)}",
       )
     }
   }
@@ -511,6 +536,7 @@ fn cli_format_line_is_supported(line : StringView) -> Bool {
   line.has_prefix("VERSION") ||
   line.has_prefix("BU_:") ||
   line.has_prefix("BO_TX_BU_ ") ||
+  line.has_prefix("SIG_VALTYPE_ ") ||
   line.has_prefix("BO_ ") ||
   line.has_prefix("SG_ ") ||
   line.has_prefix("CM_ ") ||

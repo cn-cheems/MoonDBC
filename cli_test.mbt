@@ -95,6 +95,38 @@ test "list standard extended and multiplexed messages" {
 }
 
 ///|
+test "list decode and encode an IEEE-754 signal" {
+  let source =
+    #|BO_ 300 Measurements: 4 ECU
+    #| SG_ Acceleration : 0|32@1+ (1,0) [-1000|1000] "m/s2" Logger
+    #|SIG_VALTYPE_ 300 Acceleration : 1;
+  let listed = @moondbc.run_cli(@moondbc.CliList, "vehicle.dbc", source)
+  assert_eq(
+    listed.stdout,
+    (
+      #|Messages: 1
+      #|12C standard Measurements, 4 bytes, transmitters: ECU
+      #|  Acceleration: 0|32, intel, float32, factor=1, offset=0, unit=m/s2, plain
+      #|
+    ),
+  )
+  let decoded = @moondbc.run_decode_cli(
+    "vehicle.dbc", source, "capture.log", "12C#0000C03F",
+  )
+  assert_eq(decoded.exit_code, 0)
+  assert_true(
+    decoded.stdout.find(
+      "\"Measurements\",\"Acceleration\",1.5,1.5,\"m/s2\",\"\"",
+    )
+    is Some(_),
+  )
+  assert_eq(
+    @moondbc.run_encode_cli("vehicle.dbc", source, "12C", ["Acceleration=1.5"]),
+    { stdout: "12C#0000C03F\n", stderr: "", exit_code: 0, },
+  )
+}
+
+///|
 test "decode a candump trace as CSV" {
   let output = @moondbc.run_decode_cli(
     "vehicle.dbc",

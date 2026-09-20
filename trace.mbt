@@ -104,6 +104,7 @@ fn trace_raw_text(raw : RawValue) -> String {
   match raw {
     UnsignedRaw(value) => value.to_string()
     SignedRaw(value) => value.to_string()
+    FloatRaw(value) => value.to_string()
   }
 }
 

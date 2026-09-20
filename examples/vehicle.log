@@ -3,3 +3,6 @@
 
 // Extended CAN status data
 (1697042645.223456) can0 00000123#2A
+
+// IEEE-754 Float32 measurement
+(1697042645.323456) can0 12C#0000C03F

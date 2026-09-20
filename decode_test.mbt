@@ -113,6 +113,7 @@ test "reject invalid manually constructed signal layout" {
     bit_length: 0,
     byte_order: @moondbc.Intel,
     value_kind: @moondbc.Unsigned,
+    value_type: @moondbc.Integer,
     factor: 1.0,
     offset: 0.0,
     minimum: 0.0,

@@ -3,6 +3,7 @@ pub(all) enum EncodeError {
   EncodeInvalidLayout(Int, Int)
   EncodeFrameTooShort(Int, Int)
   ValueKindMismatch(ValueKind, RawValue)
+  SignalValueTypeMismatch(SignalValueType, RawValue)
   RawValueOutOfRange(RawValue, Int)
   InvalidFactor(Double)
   NonFinitePhysicalValue(Double)
@@ -24,23 +25,37 @@ fn raw_bits_for_signal(
   signal : Signal,
   value : RawValue,
 ) -> Result[UInt64, EncodeError] {
-  match (signal.value_kind, value) {
-    (Unsigned, UnsignedRaw(raw)) =>
-      if raw > unsigned_max(signal.bit_length) {
-        Err(RawValueOutOfRange(value, signal.bit_length))
-      } else {
-        Ok(raw)
+  match signal.value_type {
+    Float32 =>
+      match value {
+        FloatRaw(raw) =>
+          Ok(Float::from_double(raw).reinterpret_as_uint().to_uint64())
+        _ => Err(SignalValueTypeMismatch(Float32, value))
       }
-    (Signed, SignedRaw(raw)) => {
-      if signal.bit_length < 64 {
-        let limit = 1L << (signal.bit_length - 1)
-        if raw < -limit || raw >= limit {
-          return Err(RawValueOutOfRange(value, signal.bit_length))
+    Float64 =>
+      match value {
+        FloatRaw(raw) => Ok(raw.reinterpret_as_uint64())
+        _ => Err(SignalValueTypeMismatch(Float64, value))
+      }
+    Integer =>
+      match (signal.value_kind, value) {
+        (Unsigned, UnsignedRaw(raw)) =>
+          if raw > unsigned_max(signal.bit_length) {
+            Err(RawValueOutOfRange(value, signal.bit_length))
+          } else {
+            Ok(raw)
+          }
+        (Signed, SignedRaw(raw)) => {
+          if signal.bit_length < 64 {
+            let limit = 1L << (signal.bit_length - 1)
+            if raw < -limit || raw >= limit {
+              return Err(RawValueOutOfRange(value, signal.bit_length))
+            }
+          }
+          Ok(raw.reinterpret_as_uint64() & unsigned_max(signal.bit_length))
         }
+        _ => Err(ValueKindMismatch(signal.value_kind, value))
       }
-      Ok(raw.reinterpret_as_uint64() & unsigned_max(signal.bit_length))
-    }
-    _ => Err(ValueKindMismatch(signal.value_kind, value))
   }
 }
 
@@ -68,6 +83,13 @@ fn validate_encode_layout(
 ) -> Result[Unit, EncodeError] {
   if signal.start_bit < 0 || signal.bit_length < 1 || signal.bit_length > 64 {
     return Err(EncodeInvalidLayout(signal.start_bit, signal.bit_length))
+  }
+  match signal.value_type {
+    Float32 if signal.bit_length != 32 =>
+      return Err(EncodeInvalidLayout(signal.start_bit, signal.bit_length))
+    Float64 if signal.bit_length != 64 =>
+      return Err(EncodeInvalidLayout(signal.start_bit, signal.bit_length))
+    _ => ()
   }
   let available_bits = payload.length() * 8
   match signal.byte_order {
@@ -162,31 +184,49 @@ pub fn Signal::encode(
   if physical < self.minimum || physical > self.maximum {
     return Err(PhysicalValueOutOfRange(physical, self.minimum, self.maximum))
   }
-  let raw = ((physical - self.offset) / self.factor).round()
-  match self.value_kind {
-    Unsigned => {
-      let maximum = unsigned_max(self.bit_length).to_double()
-      let too_large = if self.bit_length == 64 {
-        raw >= maximum
-      } else {
-        raw > maximum
+  let unscaled = (physical - self.offset) / self.factor
+  match self.value_type {
+    Float32 => {
+      let raw = Float::from_double(unscaled).to_double()
+      if raw.is_nan() || raw.is_inf() {
+        return Err(PhysicalRawOutOfRange(unscaled, self.bit_length))
       }
-      if raw < 0.0 || too_large {
-        return Err(PhysicalRawOutOfRange(raw, self.bit_length))
-      }
-      self.encode_raw(payload, UnsignedRaw(raw.to_uint64()))
+      self.encode_raw(payload, FloatRaw(raw))
     }
-    Signed => {
-      let limit = if self.bit_length == 64 {
-        9223372036854775808.0
-      } else {
-        let limit = (1L << (self.bit_length - 1)).to_double()
-        limit
+    Float64 => {
+      if unscaled.is_nan() || unscaled.is_inf() {
+        return Err(PhysicalRawOutOfRange(unscaled, self.bit_length))
       }
-      if raw < -limit || raw >= limit {
-        return Err(PhysicalRawOutOfRange(raw, self.bit_length))
+      self.encode_raw(payload, FloatRaw(unscaled))
+    }
+    Integer => {
+      let raw = unscaled.round()
+      match self.value_kind {
+        Unsigned => {
+          let maximum = unsigned_max(self.bit_length).to_double()
+          let too_large = if self.bit_length == 64 {
+            raw >= maximum
+          } else {
+            raw > maximum
+          }
+          if raw < 0.0 || too_large {
+            return Err(PhysicalRawOutOfRange(raw, self.bit_length))
+          }
+          self.encode_raw(payload, UnsignedRaw(raw.to_uint64()))
+        }
+        Signed => {
+          let limit = if self.bit_length == 64 {
+            9223372036854775808.0
+          } else {
+            let limit = (1L << (self.bit_length - 1)).to_double()
+            limit
+          }
+          if raw < -limit || raw >= limit {
+            return Err(PhysicalRawOutOfRange(raw, self.bit_length))
+          }
+          self.encode_raw(payload, SignedRaw(raw.to_int64()))
+        }
       }
-      self.encode_raw(payload, SignedRaw(raw.to_int64()))
     }
   }
 }

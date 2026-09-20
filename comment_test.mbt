@@ -84,6 +84,7 @@ test "validate comment references in manually built databases" {
             bit_length: 8,
             byte_order: @moondbc.Intel,
             value_kind: @moondbc.Unsigned,
+            value_type: @moondbc.Integer,
             factor: 1.0,
             offset: 0.0,
             minimum: 0.0,

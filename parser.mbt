@@ -61,6 +61,14 @@ priv struct PendingMessageTransmitters {
 }
 
 ///|
+priv struct PendingSignalValueType {
+  line : Int
+  message_id : UInt
+  signal_name : String
+  value_type : SignalValueType
+}
+
+///|
 fn find_after(text : StringView, start : Int, needle : StringView) -> Int? {
   if start < 0 || start > text.length() {
     return None
@@ -154,6 +162,45 @@ fn parse_message_transmitters_line(
     transmitters.push(transmitter.to_owned())
   }
   Ok((message_id, transmitters))
+}
+
+///|
+fn parse_signal_value_type_line(
+  line : StringView,
+) -> Result[(UInt, String, SignalValueType), String] {
+  let body = line[13:].trim()
+  if !body.has_suffix(";") {
+    return Err("signal value type declaration is missing ';'")
+  }
+  let content = body[:body.length() - 1].trim()
+  let colon = match content.find(":") {
+    Some(value) => value
+    None => return Err("signal value type declaration is missing ':'")
+  }
+  let header = words(content[:colon])
+  if header.length() != 2 {
+    return Err("signal value type requires a message id and signal name")
+  }
+  let message_id = match parse_uint(header[0]) {
+    Some(value) => value
+    None =>
+      return Err("signal value type message id is not an unsigned integer")
+  }
+  if dbc_message_id_parts(message_id) is None {
+    return Err(
+      "signal value type message id is outside the DBC identifier range",
+    )
+  }
+  let type_fields = words(content[colon + 1:])
+  if type_fields.length() != 1 {
+    return Err("signal value type requires one type code")
+  }
+  let value_type = match type_fields[0] {
+    "1" => Float32
+    "2" => Float64
+    _ => return Err("signal value type code must be 1 or 2")
+  }
+  Ok((message_id, header[1].to_owned(), value_type))
 }
 
 ///|
@@ -297,6 +344,7 @@ fn parse_signal_line(line : StringView) -> Result[Signal, String] {
     bit_length,
     byte_order,
     value_kind,
+    value_type: Integer,
     factor,
     offset,
     minimum,
@@ -498,6 +546,30 @@ fn contains_signal_name(message : Message, name : StringView) -> Bool {
 }
 
 ///|
+fn find_signal_index(message : Message, name : StringView) -> Int? {
+  for index, signal in message.signals {
+    if signal.name.view() == name {
+      return Some(index)
+    }
+  }
+  None
+}
+
+///|
+fn contains_signal_reference(
+  references : Array[(UInt, String)],
+  message_id : UInt,
+  signal_name : StringView,
+) -> Bool {
+  for reference in references {
+    if reference.0 == message_id && reference.1.view() == signal_name {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn contains_node(nodes : Array[String], name : StringView) -> Bool {
   for node in nodes {
     if node.view() == name {
@@ -566,6 +638,8 @@ pub fn parse(source : StringView) -> ParseResult {
   let comments : Array[DbcComment] = []
   let pending_message_transmitters : Array[PendingMessageTransmitters] = []
   let resolved_transmitter_messages : Array[UInt] = []
+  let pending_signal_value_types : Array[PendingSignalValueType] = []
+  let resolved_signal_value_types : Array[(UInt, String)] = []
   let diagnostics : Array[Diagnostic] = []
   let mut version : String? = None
   let mut current_message : Int? = None
@@ -600,6 +674,18 @@ pub fn parse(source : StringView) -> ParseResult {
           })
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC016", message)
+      }
+    } else if line.has_prefix("SIG_VALTYPE_ ") {
+      match parse_signal_value_type_line(line) {
+        Ok((message_id, signal_name, value_type)) =>
+          pending_signal_value_types.push({
+            line: line_number,
+            message_id,
+            signal_name,
+            value_type,
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC020", message)
       }
     } else if line.has_prefix("BO_ ") {
       match parse_message_line(line) {
@@ -800,6 +886,51 @@ pub fn parse(source : StringView) -> ParseResult {
           }
           resolved_transmitter_messages.push(pending.message_id)
         }
+    }
+  }
+  for pending in pending_signal_value_types {
+    match find_message_index(messages, pending.message_id) {
+      None =>
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC021",
+          "signal value type refers to an unknown message",
+        )
+      Some(message_index) => {
+        let message = messages[message_index]
+        match find_signal_index(message, pending.signal_name) {
+          None =>
+            add_diagnostic(
+              diagnostics,
+              pending.line,
+              "DBC022",
+              "signal value type refers to an unknown signal",
+            )
+          Some(signal_index) =>
+            if contains_signal_reference(
+                resolved_signal_value_types,
+                pending.message_id,
+                pending.signal_name,
+              ) {
+              add_diagnostic(
+                diagnostics,
+                pending.line,
+                "DBC023",
+                "duplicate value type declaration for the same signal",
+              )
+            } else {
+              let signal = message.signals[signal_index]
+              message.signals[signal_index] = {
+                ..signal,
+                value_type: pending.value_type,
+              }
+              resolved_signal_value_types.push(
+                (pending.message_id, pending.signal_name),
+              )
+            }
+        }
+      }
     }
   }
   {

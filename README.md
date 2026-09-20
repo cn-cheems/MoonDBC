@@ -2,7 +2,7 @@
 
 MoonDBC is a DBC parser and CAN signal codec toolkit written in MoonBit. It is intended for automotive gateways, battery-management systems, robotics, test benches, and browser-based diagnostic tools that need to turn raw CAN frames into named engineering values.
 
-The current milestone provides a portable DBC data model, parsing for messages, signals, comments and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `CM_`, and `VAL_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, byte order, signedness, scale, offset, range, unit, receivers, multiplexing markers, documentation comments, and enum labels.
+The current milestone provides a portable DBC data model, parsing for messages, signals, comments and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SIG_VALTYPE_`, `CM_`, and `VAL_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, multiplexing markers, documentation comments, and enum labels.
 
 ## Quick start
 
@@ -77,6 +77,7 @@ breaking changes are present, so the command can act as a CI compatibility gate.
 - bit-31 DBC extended-frame identifiers with collision-safe SocketCAN lookup;
 - bit-accurate Intel and Motorola signal extraction across byte boundaries;
 - signed value extension and factor/offset conversion;
+- IEEE-754 Float32 and Float64 decoding and encoding through `SIG_VALTYPE_` declarations;
 - raw and physical signal encoding without mutating the input payload;
 - type, width, frame, scale, and physical range validation;
 - message-level frame decoding with multiplex selector dispatch;

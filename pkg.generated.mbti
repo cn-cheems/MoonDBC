@@ -31,12 +31,18 @@ pub(all) enum ByteOrder {
   Motorola
   Intel
 } derive(Eq, @debug.Debug)
+pub fn ByteOrder::equal(Self, Self) -> Bool
+pub fn ByteOrder::not_equal(Self, Self) -> Bool
+pub fn ByteOrder::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CanFrame {
   id : UInt
   is_extended_frame : Bool
   payload : Bytes
 } derive(Eq, @debug.Debug)
+pub fn CanFrame::equal(Self, Self) -> Bool
+pub fn CanFrame::not_equal(Self, Self) -> Bool
+pub fn CanFrame::to_repr(Self) -> @debug.Repr
 pub fn CanFrame::to_text(Self) -> Result[String, CanFrameTextError]
 
 pub(all) enum CanFrameTextError {
@@ -49,6 +55,9 @@ pub(all) enum CanFrameTextError {
   CanFramePayloadTooLong(Int)
   CanFrameInvalidPayload(Int, Char)
 } derive(Eq, @debug.Debug)
+pub fn CanFrameTextError::equal(Self, Self) -> Bool
+pub fn CanFrameTextError::not_equal(Self, Self) -> Bool
+pub fn CanFrameTextError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CanLogRecord {
   timestamp : String?
@@ -56,6 +65,9 @@ pub(all) struct CanLogRecord {
   fd_flags : Byte?
   frame : CanFrame
 } derive(Eq, @debug.Debug)
+pub fn CanLogRecord::equal(Self, Self) -> Bool
+pub fn CanLogRecord::not_equal(Self, Self) -> Bool
+pub fn CanLogRecord::to_repr(Self) -> @debug.Repr
 pub fn CanLogRecord::to_text(Self) -> Result[String, CanLogTextError]
 
 pub(all) enum CanLogTextError {
@@ -68,28 +80,43 @@ pub(all) enum CanLogTextError {
   CanLogTimestampWithoutInterface
   CanLogFrameTextError(CanFrameTextError)
 } derive(Eq, @debug.Debug)
+pub fn CanLogTextError::equal(Self, Self) -> Bool
+pub fn CanLogTextError::not_equal(Self, Self) -> Bool
+pub fn CanLogTextError::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ChangeImpact {
   Breaking
   NonBreaking
   Informational
 } derive(Eq, @debug.Debug)
+pub fn ChangeImpact::equal(Self, Self) -> Bool
+pub fn ChangeImpact::not_equal(Self, Self) -> Bool
+pub fn ChangeImpact::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ClassifiedChange {
   impact : ChangeImpact
   change : DatabaseChange
 } derive(Eq, @debug.Debug)
+pub fn ClassifiedChange::equal(Self, Self) -> Bool
+pub fn ClassifiedChange::not_equal(Self, Self) -> Bool
+pub fn ClassifiedChange::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CliMode {
   CliCheck
   CliList
 } derive(Eq, @debug.Debug)
+pub fn CliMode::equal(Self, Self) -> Bool
+pub fn CliMode::not_equal(Self, Self) -> Bool
+pub fn CliMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CliOutput {
   stdout : String
   stderr : String
   exit_code : Int
 } derive(Eq, @debug.Debug)
+pub fn CliOutput::equal(Self, Self) -> Bool
+pub fn CliOutput::not_equal(Self, Self) -> Bool
+pub fn CliOutput::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CompatibilityReport {
   changes : Array[ClassifiedChange]
@@ -97,9 +124,12 @@ pub(all) struct CompatibilityReport {
   non_breaking_count : Int
   informational_count : Int
 } derive(Eq, @debug.Debug)
+pub fn CompatibilityReport::equal(Self, Self) -> Bool
 pub fn CompatibilityReport::has_changes(Self) -> Bool
 pub fn CompatibilityReport::is_backward_compatible(Self) -> Bool
+pub fn CompatibilityReport::not_equal(Self, Self) -> Bool
 pub fn CompatibilityReport::to_markdown(Self) -> String
+pub fn CompatibilityReport::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Database {
   version : String?
@@ -120,6 +150,7 @@ pub fn Database::decode_trace(Self, StringView) -> TraceDecodeResult
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
 pub fn Database::encode_can_frame(Self, UInt, Bool, Array[SignalAssignment]) -> Result[CanFrame, FrameEncodeError]
 pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
+pub fn Database::equal(Self, Self) -> Bool
 pub fn Database::find_can_message(Self, UInt, Bool) -> Message?
 pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
 pub fn Database::find_message(Self, UInt) -> Message?
@@ -127,8 +158,10 @@ pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::generate_moonbit_constants(Self) -> String
 pub fn Database::message_comment(Self, UInt) -> String?
 pub fn Database::node_comment(Self, StringView) -> String?
+pub fn Database::not_equal(Self, Self) -> Bool
 pub fn Database::signal_comment(Self, UInt, StringView) -> String?
 pub fn Database::to_dbc(Self) -> Result[String, DbcWriteError]
+pub fn Database::to_repr(Self) -> @debug.Repr
 pub fn Database::validate(Self) -> Array[ValidationIssue]
 pub fn Database::value_label(Self, UInt, StringView, Int64) -> String?
 
@@ -148,13 +181,19 @@ pub(all) enum DatabaseChange {
   ValueTableRemovedChange(ValueTable)
   ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
 } derive(Eq, @debug.Debug)
+pub fn DatabaseChange::equal(Self, Self) -> Bool
 pub fn DatabaseChange::impact(Self) -> ChangeImpact
+pub fn DatabaseChange::not_equal(Self, Self) -> Bool
 pub fn DatabaseChange::summary(Self) -> String
+pub fn DatabaseChange::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DbcComment {
   target : DbcCommentTarget
   text : String
 } derive(Eq, @debug.Debug)
+pub fn DbcComment::equal(Self, Self) -> Bool
+pub fn DbcComment::not_equal(Self, Self) -> Bool
+pub fn DbcComment::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DbcCommentTarget {
   DatabaseComment
@@ -162,6 +201,9 @@ pub(all) enum DbcCommentTarget {
   MessageComment(UInt)
   SignalComment(UInt, String)
 } derive(Eq, @debug.Debug)
+pub fn DbcCommentTarget::equal(Self, Self) -> Bool
+pub fn DbcCommentTarget::not_equal(Self, Self) -> Bool
+pub fn DbcCommentTarget::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DbcWriteError {
   DbcWriteInvalidToken(String, String)
@@ -173,11 +215,17 @@ pub(all) enum DbcWriteError {
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
 } derive(Eq, @debug.Debug)
+pub fn DbcWriteError::equal(Self, Self) -> Bool
+pub fn DbcWriteError::not_equal(Self, Self) -> Bool
+pub fn DbcWriteError::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DecodeError {
   InvalidSignalLayout(Int, Int)
   FrameTooShort(Int, Int)
 } derive(Eq, @debug.Debug)
+pub fn DecodeError::equal(Self, Self) -> Bool
+pub fn DecodeError::not_equal(Self, Self) -> Bool
+pub fn DecodeError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DecodedMessage {
   id : UInt
@@ -185,6 +233,9 @@ pub(all) struct DecodedMessage {
   name : String
   signals : Array[DecodedSignal]
 } derive(Eq, @debug.Debug)
+pub fn DecodedMessage::equal(Self, Self) -> Bool
+pub fn DecodedMessage::not_equal(Self, Self) -> Bool
+pub fn DecodedMessage::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DecodedSignal {
   name : String
@@ -193,6 +244,9 @@ pub(all) struct DecodedSignal {
   unit : String
   label : String?
 } derive(Eq, @debug.Debug)
+pub fn DecodedSignal::equal(Self, Self) -> Bool
+pub fn DecodedSignal::not_equal(Self, Self) -> Bool
+pub fn DecodedSignal::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DecodedTraceFrame {
   line : Int
@@ -202,6 +256,9 @@ pub(all) struct DecodedTraceFrame {
   frame : CanFrame
   decoded : DecodedMessage
 } derive(Eq, @debug.Debug)
+pub fn DecodedTraceFrame::equal(Self, Self) -> Bool
+pub fn DecodedTraceFrame::not_equal(Self, Self) -> Bool
+pub fn DecodedTraceFrame::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Diagnostic {
   line : Int
@@ -209,17 +266,24 @@ pub(all) struct Diagnostic {
   code : String
   message : String
 } derive(Eq, @debug.Debug)
+pub fn Diagnostic::equal(Self, Self) -> Bool
+pub fn Diagnostic::not_equal(Self, Self) -> Bool
+pub fn Diagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) enum EncodeError {
   EncodeInvalidLayout(Int, Int)
   EncodeFrameTooShort(Int, Int)
   ValueKindMismatch(ValueKind, RawValue)
+  SignalValueTypeMismatch(SignalValueType, RawValue)
   RawValueOutOfRange(RawValue, Int)
   InvalidFactor(Double)
   NonFinitePhysicalValue(Double)
   PhysicalValueOutOfRange(Double, Double, Double)
   PhysicalRawOutOfRange(Double, Int)
 } derive(Eq, @debug.Debug)
+pub fn EncodeError::equal(Self, Self) -> Bool
+pub fn EncodeError::not_equal(Self, Self) -> Bool
+pub fn EncodeError::to_repr(Self) -> @debug.Repr
 
 pub(all) enum FrameDecodeError {
   UnknownMessage(UInt)
@@ -230,6 +294,9 @@ pub(all) enum FrameDecodeError {
   MultipleMultiplexers
   SignalDecodeFailed(String, DecodeError)
 } derive(Eq, @debug.Debug)
+pub fn FrameDecodeError::equal(Self, Self) -> Bool
+pub fn FrameDecodeError::not_equal(Self, Self) -> Bool
+pub fn FrameDecodeError::to_repr(Self) -> @debug.Repr
 
 pub(all) enum FrameEncodeError {
   FrameEncodeUnknownMessage(UInt)
@@ -245,6 +312,9 @@ pub(all) enum FrameEncodeError {
   FrameSignalEncodeFailed(String, EncodeError)
   FrameMultiplexerDecodeFailed(String, DecodeError)
 } derive(Eq, @debug.Debug)
+pub fn FrameEncodeError::equal(Self, Self) -> Bool
+pub fn FrameEncodeError::not_equal(Self, Self) -> Bool
+pub fn FrameEncodeError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Message {
   id : UInt
@@ -256,10 +326,13 @@ pub(all) struct Message {
 } derive(Eq, @debug.Debug)
 pub fn Message::decode_frame(Self, BytesView) -> Result[DecodedMessage, FrameDecodeError]
 pub fn Message::encode_frame(Self, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
+pub fn Message::equal(Self, Self) -> Bool
 pub fn Message::find_signal(Self, StringView) -> Signal?
 pub fn Message::frame_id(Self) -> UInt
 pub fn Message::is_extended_frame(Self) -> Bool
 pub fn Message::is_transmitted_by(Self, StringView) -> Bool
+pub fn Message::not_equal(Self, Self) -> Bool
+pub fn Message::to_repr(Self) -> @debug.Repr
 pub fn Message::transmitters(Self) -> Array[String]
 
 pub(all) struct MessageMetadata {
@@ -268,24 +341,37 @@ pub(all) struct MessageMetadata {
   transmitter : String
   additional_transmitters : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn MessageMetadata::equal(Self, Self) -> Bool
+pub fn MessageMetadata::not_equal(Self, Self) -> Bool
+pub fn MessageMetadata::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MultiplexRole {
   Plain
   Multiplexer
   Multiplexed(Int)
 } derive(Eq, @debug.Debug)
+pub fn MultiplexRole::equal(Self, Self) -> Bool
+pub fn MultiplexRole::not_equal(Self, Self) -> Bool
+pub fn MultiplexRole::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ParseResult {
   database : Database
   diagnostics : Array[Diagnostic]
 } derive(Eq, @debug.Debug)
+pub fn ParseResult::equal(Self, Self) -> Bool
 pub fn ParseResult::is_valid(Self) -> Bool
+pub fn ParseResult::not_equal(Self, Self) -> Bool
+pub fn ParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RawValue {
   UnsignedRaw(UInt64)
   SignedRaw(Int64)
+  FloatRaw(Double)
 } derive(Eq, @debug.Debug)
+pub fn RawValue::equal(Self, Self) -> Bool
+pub fn RawValue::not_equal(Self, Self) -> Bool
 pub fn RawValue::to_double(Self) -> Double
+pub fn RawValue::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Signal {
   name : String
@@ -293,6 +379,7 @@ pub(all) struct Signal {
   bit_length : Int
   byte_order : ByteOrder
   value_kind : ValueKind
+  value_type : SignalValueType
   factor : Double
   offset : Double
   minimum : Double
@@ -305,30 +392,54 @@ pub fn Signal::decode(Self, BytesView) -> Result[Double, DecodeError]
 pub fn Signal::decode_raw(Self, BytesView) -> Result[RawValue, DecodeError]
 pub fn Signal::encode(Self, BytesView, Double) -> Result[Bytes, EncodeError]
 pub fn Signal::encode_raw(Self, BytesView, RawValue) -> Result[Bytes, EncodeError]
+pub fn Signal::equal(Self, Self) -> Bool
+pub fn Signal::not_equal(Self, Self) -> Bool
+pub fn Signal::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SignalAssignment {
   name : String
   physical : Double
 } derive(Eq, @debug.Debug)
+pub fn SignalAssignment::equal(Self, Self) -> Bool
+pub fn SignalAssignment::not_equal(Self, Self) -> Bool
+pub fn SignalAssignment::to_repr(Self) -> @debug.Repr
+
+pub(all) enum SignalValueType {
+  Integer
+  Float32
+  Float64
+} derive(Eq, @debug.Debug)
+pub fn SignalValueType::equal(Self, Self) -> Bool
+pub fn SignalValueType::not_equal(Self, Self) -> Bool
+pub fn SignalValueType::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TraceDecodeResult {
   frames : Array[DecodedTraceFrame]
   diagnostics : Array[TraceDiagnostic]
 } derive(Eq, @debug.Debug)
+pub fn TraceDecodeResult::equal(Self, Self) -> Bool
 pub fn TraceDecodeResult::is_valid(Self) -> Bool
+pub fn TraceDecodeResult::not_equal(Self, Self) -> Bool
 pub fn TraceDecodeResult::to_csv(Self) -> Result[String, CanLogTextError]
+pub fn TraceDecodeResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TraceDiagnostic {
   line : Int
   text : String
   error : TraceError
 } derive(Eq, @debug.Debug)
+pub fn TraceDiagnostic::equal(Self, Self) -> Bool
+pub fn TraceDiagnostic::not_equal(Self, Self) -> Bool
+pub fn TraceDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TraceError {
   TraceFrameTextError(CanFrameTextError)
   TraceCanLogTextError(CanLogTextError)
   TraceFrameDecodeError(FrameDecodeError)
 } derive(Eq, @debug.Debug)
+pub fn TraceError::equal(Self, Self) -> Bool
+pub fn TraceError::not_equal(Self, Self) -> Bool
+pub fn TraceError::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ValidationIssue {
   InvalidMessageIdentifierIssue(UInt)
@@ -336,6 +447,8 @@ pub(all) enum ValidationIssue {
   InvalidPayloadSizeIssue(UInt, Int)
   DuplicateSignalNameIssue(UInt, String)
   InvalidSignalLayoutIssue(UInt, String, Int, Int)
+  InvalidSignalValueTypeIssue(UInt, String, SignalValueType, Int)
+  FloatingMultiplexerIssue(UInt, String, SignalValueType)
   SignalOutsidePayloadIssue(UInt, String)
   InvalidScaleIssue(UInt, String, Double, Double)
   InvalidPhysicalRangeIssue(UInt, String, Double, Double)
@@ -349,23 +462,35 @@ pub(all) enum ValidationIssue {
   UnknownCommentSignalIssue(UInt, String)
   DuplicateMessageTransmitterIssue(UInt, String)
 } derive(Eq, @debug.Debug)
+pub fn ValidationIssue::equal(Self, Self) -> Bool
+pub fn ValidationIssue::not_equal(Self, Self) -> Bool
+pub fn ValidationIssue::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ValueDescription {
   value : Int64
   label : String
 } derive(Eq, @debug.Debug)
+pub fn ValueDescription::equal(Self, Self) -> Bool
+pub fn ValueDescription::not_equal(Self, Self) -> Bool
+pub fn ValueDescription::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ValueKind {
   Unsigned
   Signed
 } derive(Eq, @debug.Debug)
+pub fn ValueKind::equal(Self, Self) -> Bool
+pub fn ValueKind::not_equal(Self, Self) -> Bool
+pub fn ValueKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ValueTable {
   message_id : UInt
   signal_name : String
   entries : Array[ValueDescription]
 } derive(Eq, @debug.Debug)
+pub fn ValueTable::equal(Self, Self) -> Bool
 pub fn ValueTable::find_label(Self, Int64) -> String?
+pub fn ValueTable::not_equal(Self, Self) -> Bool
+pub fn ValueTable::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

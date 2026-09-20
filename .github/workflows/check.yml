@@ -40,6 +40,7 @@ jobs:
           moon run --target native cmd/moondbc -- check examples/vehicle.dbc | grep -q '^OK examples/vehicle.dbc$'
           moon run --target native cmd/moondbc -- list examples/vehicle.dbc | grep -q '^00000123 extended ExtendedStatus'
           moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Powertrain","Gear",1,1,"","Drive"'
+          moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Measurements","Acceleration",1.5,1.5,"m/s2",""'
           test "$(moon run --target native cmd/moondbc -- encode examples/vehicle.dbc 100 EngineSpeed=1000 CoolantTemp=85 Gear=1)" = '100#401F7D0001000000'
           for dbc in examples/*.dbc; do
             moon run --target native cmd/moondbc -- format --check "$dbc"

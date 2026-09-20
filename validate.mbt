@@ -5,6 +5,8 @@ pub(all) enum ValidationIssue {
   InvalidPayloadSizeIssue(UInt, Int)
   DuplicateSignalNameIssue(UInt, String)
   InvalidSignalLayoutIssue(UInt, String, Int, Int)
+  InvalidSignalValueTypeIssue(UInt, String, SignalValueType, Int)
+  FloatingMultiplexerIssue(UInt, String, SignalValueType)
   SignalOutsidePayloadIssue(UInt, String)
   InvalidScaleIssue(UInt, String, Double, Double)
   InvalidPhysicalRangeIssue(UInt, String, Double, Double)
@@ -150,6 +152,27 @@ fn validate_message(message : Message, issues : Array[ValidationIssue]) -> Unit 
       }
       occupied.push(bits)
     }
+    match signal.value_type {
+      Float32 if signal.bit_length != 32 =>
+        issues.push(
+          InvalidSignalValueTypeIssue(
+            message.id,
+            signal.name,
+            signal.value_type,
+            signal.bit_length,
+          ),
+        )
+      Float64 if signal.bit_length != 64 =>
+        issues.push(
+          InvalidSignalValueTypeIssue(
+            message.id,
+            signal.name,
+            signal.value_type,
+            signal.bit_length,
+          ),
+        )
+      _ => ()
+    }
     if signal.factor == 0.0 ||
       signal.factor.is_nan() ||
       signal.factor.is_inf() ||
@@ -175,6 +198,11 @@ fn validate_message(message : Message, issues : Array[ValidationIssue]) -> Unit 
     }
     match signal.multiplex {
       Multiplexer => {
+        if signal.value_type != Integer {
+          issues.push(
+            FloatingMultiplexerIssue(message.id, signal.name, signal.value_type),
+          )
+        }
         multiplexer_count += 1
         if multiplexer is None {
           multiplexer = Some(signal)

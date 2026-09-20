@@ -111,6 +111,7 @@ test "generated identifiers are normalized and stable" {
             bit_length: 1,
             byte_order: @moondbc.Intel,
             value_kind: @moondbc.Unsigned,
+            value_type: @moondbc.Integer,
             factor: 1.0,
             offset: 0.0,
             minimum: 0.0,

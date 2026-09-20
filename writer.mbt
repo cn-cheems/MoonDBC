@@ -225,6 +225,29 @@ fn has_additional_transmitters(messages : Array[Message]) -> Bool {
 }
 
 ///|
+fn has_signal_value_types(messages : Array[Message]) -> Bool {
+  for message in messages {
+    for signal in message.signals {
+      if signal.value_type != Integer {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+fn write_signal_value_types(lines : Array[String], message : Message) -> Unit {
+  for signal in message.signals {
+    match signal.value_type {
+      Integer => ()
+      Float32 => lines.push("SIG_VALTYPE_ \{message.id} \{signal.name} : 1;")
+      Float64 => lines.push("SIG_VALTYPE_ \{message.id} \{signal.name} : 2;")
+    }
+  }
+}
+
+///|
 fn write_value_table(
   lines : Array[String],
   table : ValueTable,
@@ -309,6 +332,7 @@ fn write_comment(comment : DbcComment) -> Result[String, DbcWriteError] {
 pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   let lines : Array[String] = []
   let has_transmitter_section = has_additional_transmitters(self.messages)
+  let has_value_type_section = has_signal_value_types(self.messages)
   match self.version {
     Some(version) => {
       match check_dbc_quoted_text("database version", version) {
@@ -342,11 +366,23 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       Ok(_) => ()
     }
     if index + 1 < self.messages.length() ||
+      has_value_type_section ||
       has_transmitter_section ||
       !self.comments.is_empty() ||
       !self.value_tables.is_empty() {
       lines.push("")
     }
+  }
+  for message in self.messages {
+    write_signal_value_types(lines, message)
+  }
+  if has_value_type_section &&
+    (
+      has_transmitter_section ||
+      !self.comments.is_empty() ||
+      !self.value_tables.is_empty()
+    ) {
+    lines.push("")
   }
   for message in self.messages {
     match write_message_transmitters(message) {

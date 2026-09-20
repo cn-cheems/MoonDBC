@@ -50,6 +50,7 @@ fn selector_matches(raw : RawValue, selector : Int) -> Bool {
   match raw {
     UnsignedRaw(value) => value == selector.to_uint64()
     SignedRaw(value) => value == selector.to_int64()
+    FloatRaw(_) => false
   }
 }
 
@@ -123,6 +124,7 @@ pub fn Message::decode_frame(
 fn raw_value_as_int64(raw : RawValue) -> Int64? {
   match raw {
     SignedRaw(value) => Some(value)
+    FloatRaw(_) => None
     UnsignedRaw(value) =>
       if value <= 9223372036854775807UL {
         Some(value.reinterpret_as_int64())

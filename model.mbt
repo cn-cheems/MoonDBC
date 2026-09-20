@@ -12,6 +12,14 @@ pub(all) enum ValueKind {
 } derive(Eq, Debug)
 
 ///|
+/// Physical storage selected by an optional `SIG_VALTYPE_` declaration.
+pub(all) enum SignalValueType {
+  Integer
+  Float32
+  Float64
+} derive(Eq, Debug)
+
+///|
 pub(all) enum MultiplexRole {
   Plain
   Multiplexer
@@ -25,6 +33,7 @@ pub(all) struct Signal {
   bit_length : Int
   byte_order : ByteOrder
   value_kind : ValueKind
+  value_type : SignalValueType
   factor : Double
   offset : Double
   minimum : Double

@@ -1,9 +1,9 @@
 ///|
-/// A raw CAN signal value retains whether the DBC declaration marks it as
-/// signed or unsigned.
+/// A raw CAN signal value retains its integer signedness or IEEE-754 value.
 pub(all) enum RawValue {
   UnsignedRaw(UInt64)
   SignedRaw(Int64)
+  FloatRaw(Double)
 } derive(Eq, Debug)
 
 ///|
@@ -17,6 +17,7 @@ pub fn RawValue::to_double(self : RawValue) -> Double {
   match self {
     UnsignedRaw(value) => value.to_double()
     SignedRaw(value) => value.to_double()
+    FloatRaw(value) => value
   }
 }
 
@@ -83,20 +84,37 @@ pub fn Signal::decode_raw(
   match raw_result {
     Err(error) => Err(error)
     Ok(raw) =>
-      match self.value_kind {
-        Unsigned => Ok(UnsignedRaw(raw))
-        Signed => {
-          if self.bit_length == 64 {
-            return Ok(SignedRaw(raw.reinterpret_as_int64()))
-          }
-          let sign_bit = 1UL << (self.bit_length - 1)
-          let signed_bits = if (raw & sign_bit) != 0UL {
-            raw | (0UL.lnot() << self.bit_length)
+      match self.value_type {
+        Float32 =>
+          if self.bit_length == 32 {
+            Ok(
+              FloatRaw(Float::reinterpret_from_uint(raw.to_uint()).to_double()),
+            )
           } else {
-            raw
+            Err(InvalidSignalLayout(self.start_bit, self.bit_length))
           }
-          Ok(SignedRaw(signed_bits.reinterpret_as_int64()))
-        }
+        Float64 =>
+          if self.bit_length == 64 {
+            Ok(FloatRaw(raw.reinterpret_as_double()))
+          } else {
+            Err(InvalidSignalLayout(self.start_bit, self.bit_length))
+          }
+        Integer =>
+          match self.value_kind {
+            Unsigned => Ok(UnsignedRaw(raw))
+            Signed => {
+              if self.bit_length == 64 {
+                return Ok(SignedRaw(raw.reinterpret_as_int64()))
+              }
+              let sign_bit = 1UL << (self.bit_length - 1)
+              let signed_bits = if (raw & sign_bit) != 0UL {
+                raw | (0UL.lnot() << self.bit_length)
+              } else {
+                raw
+              }
+              Ok(SignedRaw(signed_bits.reinterpret_as_int64()))
+            }
+          }
       }
   }
 }

@@ -53,6 +53,11 @@ fn append_signal_constants(
   lines.push(
     "pub const \{prefix}_IS_SIGNED : Bool = \{signal.value_kind == Signed}",
   )
+  match signal.value_type {
+    Integer => ()
+    Float32 => lines.push("pub const \{prefix}_IS_FLOAT32 : Bool = true")
+    Float64 => lines.push("pub const \{prefix}_IS_FLOAT64 : Bool = true")
+  }
   lines.push("pub const \{prefix}_FACTOR : Double = \{signal.factor}")
   lines.push("pub const \{prefix}_OFFSET : Double = \{signal.offset}")
   lines.push("pub const \{prefix}_MINIMUM : Double = \{signal.minimum}")
