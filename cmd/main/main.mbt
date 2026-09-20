@@ -8,9 +8,13 @@ fn main {
     #| SG_ CoolantTemp : 23|8@0- (1,-40) [-40|215] "degC" Dashboard
     #| SG_ Gear : 32|8@1+ (1,0) [0|7] "" Dashboard
     #|VAL_ 256 Gear 0 "Neutral" 1 "Drive" 2 "Reverse";
-  let result = @moondbc.parse(source)
+  let result = @moondbc.parse_with_source_map(source)
   println("MoonDBC parsed \{result.database.messages.length()} message(s)")
   println("validation issues: \{result.database.validate().length()}")
+  let layout = result.analyze_frame_layout(256U).unwrap()
+  println(
+    "layout cells: \{layout.cells.length()}, layout issues: \{layout.issues.length()}",
+  )
   println(
     "self comparison changes: \{result.database.diff(result.database).length()}",
   )

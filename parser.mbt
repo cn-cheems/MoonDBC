@@ -627,10 +627,30 @@ fn add_diagnostic(
 }
 
 ///|
+fn declaration_span(
+  raw_line : StringView,
+  declaration : StringView,
+  line : Int,
+) -> SourceSpan {
+  let offset = match raw_line.find(declaration) {
+    Some(value) => value
+    None => 0
+  }
+  {
+    start_line: line,
+    start_column: offset + 1,
+    end_line: line,
+    end_column: offset + declaration.length() + 1,
+  }
+}
+
+///|
 /// Parse the core declarations of a DBC document while retaining all recoverable
-/// errors as source-line diagnostics.
-pub fn parse(source : StringView) -> ParseResult {
+/// errors and declaration locations.
+pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let messages : Array[Message] = []
+  let message_locations : Array[MessageSourceLocation] = []
+  let signal_locations : Array[SignalSourceLocation] = []
   let nodes : Array[String] = []
   let pending_value_tables : Array[PendingValueTable] = []
   let value_tables : Array[ValueTable] = []
@@ -700,6 +720,10 @@ pub fn parse(source : StringView) -> ParseResult {
             current_message = None
           } else {
             messages.push(message)
+            message_locations.push({
+              message_id: message.id,
+              declaration: declaration_span(raw_line, line, line_number),
+            })
             current_message = Some(messages.length() - 1)
           }
         Err(message) => {
@@ -726,6 +750,11 @@ pub fn parse(source : StringView) -> ParseResult {
                 )
               } else {
                 message.signals.push(signal)
+                signal_locations.push({
+                  message_id: message.id,
+                  signal_name: signal.name,
+                  declaration: declaration_span(raw_line, line, line_number),
+                })
               }
             }
             Err(message) =>
@@ -936,5 +965,15 @@ pub fn parse(source : StringView) -> ParseResult {
   {
     database: { version, nodes, messages, value_tables, comments, },
     diagnostics,
+    source_map: { messages: message_locations, signals: signal_locations, },
   }
+}
+
+///|
+/// Parse the semantic DBC model while retaining all recoverable errors as
+/// source-line diagnostics. Use `parse_with_source_map` when declaration ranges
+/// are needed for editors or visualizations.
+pub fn parse(source : StringView) -> ParseResult {
+  let result = parse_with_source_map(source)
+  { database: result.database, diagnostics: result.diagnostics, }
 }

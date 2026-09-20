@@ -32,6 +32,22 @@ let trace = result.database.decode_trace(
 let csv = trace.to_csv().unwrap()
 ```
 
+Source-aware parsing can drive bit-layout views and editors without adding
+location fields to the semantic DBC model:
+
+```moonbit
+let parsed = @moondbc.parse_with_source_map(source)
+let layout = parsed.analyze_frame_layout(256U).unwrap()
+let first_bit = layout.find_cell(0, 0).unwrap()
+for owner in first_bit.owners {
+  println("\{owner.signal_name} bit \{owner.signal_bit}")
+}
+```
+
+Each layout cell is classified as unused, singly occupied, shared by mutually
+exclusive multiplex branches, or conflicting. Invalid and out-of-payload
+signals retain their original declaration ranges in layout issues.
+
 Run the example and tests with the current MoonBit toolchain:
 
 ```text
@@ -84,6 +100,7 @@ breaking changes are present, so the command can act as a CI compatibility gate.
 - message-level frame encoding from strict named signal assignments;
 - automatic enrichment of decoded values with `VAL_` labels;
 - semantic validation for frame bounds, overlaps, scaling, and multiplexing;
+- source-aware CAN payload layout analysis with multiplex sharing and conflict classification;
 - deterministic model comparison for messages, signals, and value tables;
 - compatibility impact classification and deterministic Markdown change reports;
 - standalone MoonBit constant generation for static CAN metadata;

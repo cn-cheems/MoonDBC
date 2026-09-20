@@ -12,6 +12,8 @@ pub fn parse_can_frame(StringView) -> Result[CanFrame, CanFrameTextError]
 
 pub fn parse_can_log_record(StringView) -> Result[CanLogRecord, CanLogTextError]
 
+pub fn parse_with_source_map(StringView) -> SourceParseResult
+
 pub fn run_cli(CliMode, String, StringView) -> CliOutput
 
 pub fn run_decode_cli(String, StringView, String, StringView) -> CliOutput
@@ -138,6 +140,7 @@ pub(all) struct Database {
   value_tables : Array[ValueTable]
   comments : Array[DbcComment]
 } derive(Eq, @debug.Debug)
+pub fn Database::analyze_frame_layout(Self, UInt) -> Result[FrameLayoutAnalysis, FrameLayoutError]
 pub fn Database::can_message_comment(Self, UInt, Bool) -> String?
 pub fn Database::can_signal_comment(Self, UInt, Bool, StringView) -> String?
 pub fn Database::can_value_label(Self, UInt, Bool, StringView, Int64) -> String?
@@ -204,6 +207,16 @@ pub(all) enum DbcCommentTarget {
 pub fn DbcCommentTarget::equal(Self, Self) -> Bool
 pub fn DbcCommentTarget::not_equal(Self, Self) -> Bool
 pub fn DbcCommentTarget::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DbcSourceMap {
+  messages : Array[MessageSourceLocation]
+  signals : Array[SignalSourceLocation]
+} derive(Eq, @debug.Debug)
+pub fn DbcSourceMap::equal(Self, Self) -> Bool
+pub fn DbcSourceMap::find_message(Self, UInt) -> SourceSpan?
+pub fn DbcSourceMap::find_signal(Self, UInt, StringView) -> SourceSpan?
+pub fn DbcSourceMap::not_equal(Self, Self) -> Bool
+pub fn DbcSourceMap::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DbcWriteError {
   DbcWriteInvalidToken(String, String)
@@ -316,6 +329,66 @@ pub fn FrameEncodeError::equal(Self, Self) -> Bool
 pub fn FrameEncodeError::not_equal(Self, Self) -> Bool
 pub fn FrameEncodeError::to_repr(Self) -> @debug.Repr
 
+pub(all) struct FrameLayoutAnalysis {
+  message_id : UInt
+  payload_size : Int
+  cells : Array[FrameLayoutCell]
+  issues : Array[FrameLayoutIssue]
+} derive(Eq, @debug.Debug)
+pub fn FrameLayoutAnalysis::equal(Self, Self) -> Bool
+pub fn FrameLayoutAnalysis::find_cell(Self, Int, Int) -> FrameLayoutCell?
+pub fn FrameLayoutAnalysis::not_equal(Self, Self) -> Bool
+pub fn FrameLayoutAnalysis::to_repr(Self) -> @debug.Repr
+
+pub(all) struct FrameLayoutCell {
+  absolute_bit : Int
+  byte_index : Int
+  bit_in_byte : Int
+  kind : FrameLayoutCellKind
+  owners : Array[FrameLayoutOwner]
+} derive(Eq, @debug.Debug)
+pub fn FrameLayoutCell::equal(Self, Self) -> Bool
+pub fn FrameLayoutCell::not_equal(Self, Self) -> Bool
+pub fn FrameLayoutCell::to_repr(Self) -> @debug.Repr
+
+pub(all) enum FrameLayoutCellKind {
+  LayoutUnused
+  LayoutOccupied
+  LayoutMultiplexed
+  LayoutConflict
+} derive(Eq, @debug.Debug)
+pub fn FrameLayoutCellKind::equal(Self, Self) -> Bool
+pub fn FrameLayoutCellKind::not_equal(Self, Self) -> Bool
+pub fn FrameLayoutCellKind::to_repr(Self) -> @debug.Repr
+
+pub(all) enum FrameLayoutError {
+  LayoutUnknownMessage(UInt)
+} derive(Eq, @debug.Debug)
+pub fn FrameLayoutError::equal(Self, Self) -> Bool
+pub fn FrameLayoutError::not_equal(Self, Self) -> Bool
+pub fn FrameLayoutError::to_repr(Self) -> @debug.Repr
+
+pub(all) enum FrameLayoutIssue {
+  LayoutInvalidPayloadSize(Int)
+  LayoutInvalidSignal(String, Int, Int, SourceSpan?)
+  LayoutSignalOutsidePayload(String, SourceSpan?)
+  LayoutConflictingSignals(String, String, Array[Int], SourceSpan?, SourceSpan?)
+} derive(Eq, @debug.Debug)
+pub fn FrameLayoutIssue::equal(Self, Self) -> Bool
+pub fn FrameLayoutIssue::not_equal(Self, Self) -> Bool
+pub fn FrameLayoutIssue::to_repr(Self) -> @debug.Repr
+
+pub(all) struct FrameLayoutOwner {
+  signal_index : Int
+  signal_name : String
+  signal_bit : Int
+  multiplex : MultiplexRole
+  source : SourceSpan?
+} derive(Eq, @debug.Debug)
+pub fn FrameLayoutOwner::equal(Self, Self) -> Bool
+pub fn FrameLayoutOwner::not_equal(Self, Self) -> Bool
+pub fn FrameLayoutOwner::to_repr(Self) -> @debug.Repr
+
 pub(all) struct Message {
   id : UInt
   name : String
@@ -344,6 +417,14 @@ pub(all) struct MessageMetadata {
 pub fn MessageMetadata::equal(Self, Self) -> Bool
 pub fn MessageMetadata::not_equal(Self, Self) -> Bool
 pub fn MessageMetadata::to_repr(Self) -> @debug.Repr
+
+pub(all) struct MessageSourceLocation {
+  message_id : UInt
+  declaration : SourceSpan
+} derive(Eq, @debug.Debug)
+pub fn MessageSourceLocation::equal(Self, Self) -> Bool
+pub fn MessageSourceLocation::not_equal(Self, Self) -> Bool
+pub fn MessageSourceLocation::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MultiplexRole {
   Plain
@@ -404,6 +485,15 @@ pub fn SignalAssignment::equal(Self, Self) -> Bool
 pub fn SignalAssignment::not_equal(Self, Self) -> Bool
 pub fn SignalAssignment::to_repr(Self) -> @debug.Repr
 
+pub(all) struct SignalSourceLocation {
+  message_id : UInt
+  signal_name : String
+  declaration : SourceSpan
+} derive(Eq, @debug.Debug)
+pub fn SignalSourceLocation::equal(Self, Self) -> Bool
+pub fn SignalSourceLocation::not_equal(Self, Self) -> Bool
+pub fn SignalSourceLocation::to_repr(Self) -> @debug.Repr
+
 pub(all) enum SignalValueType {
   Integer
   Float32
@@ -412,6 +502,27 @@ pub(all) enum SignalValueType {
 pub fn SignalValueType::equal(Self, Self) -> Bool
 pub fn SignalValueType::not_equal(Self, Self) -> Bool
 pub fn SignalValueType::to_repr(Self) -> @debug.Repr
+
+pub(all) struct SourceParseResult {
+  database : Database
+  diagnostics : Array[Diagnostic]
+  source_map : DbcSourceMap
+} derive(Eq, @debug.Debug)
+pub fn SourceParseResult::analyze_frame_layout(Self, UInt) -> Result[FrameLayoutAnalysis, FrameLayoutError]
+pub fn SourceParseResult::equal(Self, Self) -> Bool
+pub fn SourceParseResult::is_valid(Self) -> Bool
+pub fn SourceParseResult::not_equal(Self, Self) -> Bool
+pub fn SourceParseResult::to_repr(Self) -> @debug.Repr
+
+pub(all) struct SourceSpan {
+  start_line : Int
+  start_column : Int
+  end_line : Int
+  end_column : Int
+} derive(Eq, @debug.Debug)
+pub fn SourceSpan::equal(Self, Self) -> Bool
+pub fn SourceSpan::not_equal(Self, Self) -> Bool
+pub fn SourceSpan::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TraceDecodeResult {
   frames : Array[DecodedTraceFrame]

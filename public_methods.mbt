@@ -226,3 +226,69 @@ pub extend DbcWriteError with Eq::{not_equal, equal}
 
 ///|
 pub extend DbcWriteError with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SourceSpan with Eq::{not_equal, equal}
+
+///|
+pub extend SourceSpan with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MessageSourceLocation with Eq::{not_equal, equal}
+
+///|
+pub extend MessageSourceLocation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SignalSourceLocation with Eq::{not_equal, equal}
+
+///|
+pub extend SignalSourceLocation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcSourceMap with Eq::{not_equal, equal}
+
+///|
+pub extend DbcSourceMap with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SourceParseResult with Eq::{not_equal, equal}
+
+///|
+pub extend SourceParseResult with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend FrameLayoutCellKind with Eq::{not_equal, equal}
+
+///|
+pub extend FrameLayoutCellKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend FrameLayoutOwner with Eq::{not_equal, equal}
+
+///|
+pub extend FrameLayoutOwner with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend FrameLayoutCell with Eq::{not_equal, equal}
+
+///|
+pub extend FrameLayoutCell with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend FrameLayoutIssue with Eq::{not_equal, equal}
+
+///|
+pub extend FrameLayoutIssue with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend FrameLayoutAnalysis with Eq::{not_equal, equal}
+
+///|
+pub extend FrameLayoutAnalysis with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend FrameLayoutError with Eq::{not_equal, equal}
+
+///|
+pub extend FrameLayoutError with @moonbitlang/core/debug.Debug::{to_repr}
