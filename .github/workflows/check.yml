@@ -27,6 +27,7 @@ jobs:
           moon check --target wasm --deny-warn
           moon check --target wasm-gc --deny-warn
           moon check --target js --deny-warn
+          moon build --target js workbench --deny-warn
       - name: Test
         run: |
           moon test --target wasm --deny-warn

@@ -57,6 +57,20 @@ moon check --target wasm --deny-warn
 moon test --target wasm --deny-warn
 ```
 
+## Browser workbench
+
+MoonDBC includes a local browser workbench for inspecting DBC source, parser
+diagnostics, messages, signals, and source-aware CAN frame layouts. Parsing runs
+in the browser; the DBC text is not uploaded anywhere.
+
+```text
+moon install moonbit-community/warren
+warren dev --browser-entry workbench
+```
+
+Open the local URL printed by Warren. The workbench starts with a multiplexed
+sample and accepts pasted DBC text in the source editor.
+
 Inspect a real DBC file with the native command-line tool:
 
 ```text
@@ -111,10 +125,6 @@ breaking changes are present, so the command can act as a CI compatibility gate.
 - native `check`, `list`, trace-to-CSV `decode`, physical-value `encode`, deterministic `format`, compatibility `diff`, and MoonBit `generate` commands;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
-
-## Roadmap
-
-- browser workbench.
 
 ## Project origin
 

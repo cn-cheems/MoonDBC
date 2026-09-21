@@ -16,4 +16,5 @@ description = "A DBC parser and CAN signal codec toolkit written in MoonBit."
 
 import {
   "moonbitlang/async@0.21.3",
+  "moonbit-community/rabbita@0.13.1",
 }
