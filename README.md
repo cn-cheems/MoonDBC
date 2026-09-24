@@ -69,7 +69,8 @@ warren dev --browser-entry workbench
 ```
 
 Open the local URL printed by Warren. The workbench starts with a multiplexed
-sample and accepts pasted DBC text in the source editor.
+sample and accepts pasted DBC text or local `.dbc` files up to 4 MiB. Imported
+files stay in the browser and are not uploaded.
 
 Inspect a real DBC file with the native command-line tool:
 

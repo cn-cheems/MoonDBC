@@ -1,8 +1,31 @@
 ///|
-using @rabbita {type Emit, type Html, type Val, none}
+using @rabbita {type Cmd, type Emit, type Html, type Val, none, perform}
 
 ///|
-using @html {button, div, h1, h2, nothing, p, span, textarea}
+using @html {button, div, h1, h2, input, label, nothing, p, span, textarea}
+
+///|
+let max_import_bytes : Int = 4 * 1024 * 1024
+
+///|
+extern "js" fn selected_file_name(input_id : String) -> String = "(inputId) => document.getElementById(inputId)?.files?.[0]?.name ?? ''"
+
+///|
+extern "js" fn selected_file_size(input_id : String) -> Int = "(inputId) => document.getElementById(inputId)?.files?.[0]?.size ?? -1"
+
+///|
+extern "js" fn selected_file_text(input_id : String) -> @js.Promise =
+  #| (inputId) => {
+  #|   const file = document.getElementById(inputId)?.files?.[0];
+  #|   return file ? file.text() : Promise.reject(new Error("No file selected"));
+  #| }
+
+///|
+extern "js" fn clear_selected_file(input_id : String) -> Unit =
+  #| (inputId) => {
+  #|   const input = document.getElementById(inputId);
+  #|   if (input) input.value = "";
+  #| }
 
 ///|
 let sample_dbc =
@@ -29,6 +52,10 @@ let sample_dbc =
 struct Model {
   source : String
   selected_message : Int
+  source_name : String
+  source_bytes : Int?
+  importing : Bool
+  import_error : String?
 } derive(Eq)
 
 ///|
@@ -36,6 +63,71 @@ enum Msg {
   SourceChanged(String)
   SelectMessage(Int)
   LoadSample
+  FilePicked
+  FileReadFinished(FileReadResult)
+}
+
+///|
+enum FileReadResult {
+  FileReadSuccess(String, String, Int)
+  FileReadFailure(String)
+}
+
+///|
+fn validate_import_metadata(name : String, size : Int) -> String? {
+  if name == "" || size < 0 {
+    Some("No file was selected.")
+  } else if !name.to_lower().has_suffix(".dbc") {
+    Some("Choose a file with the .dbc extension.")
+  } else if size > max_import_bytes {
+    Some("The file exceeds the 4 MiB import limit.")
+  } else {
+    None
+  }
+}
+
+///|
+fn read_selected_file_command(
+  send : Emit[Msg],
+  name : String,
+  size : Int,
+) -> Cmd {
+  perform(result => send(FileReadFinished(result)), async fn() noraise {
+    let result = try
+      selected_file_text("dbc-file-input").wait().to_string()
+    catch {
+      _ => FileReadFailure("The selected file could not be read as text.")
+    } noraise {
+      source => FileReadSuccess(name, source, size)
+    }
+    clear_selected_file("dbc-file-input")
+    result
+  })
+}
+
+///|
+fn source_size_label(model : Model) -> String {
+  match model.source_bytes {
+    Some(bytes) if bytes < 1024 => "\{bytes} bytes"
+    Some(bytes) => "\{(bytes + 1023) / 1024} KiB"
+    None => "\{model.source.length()} characters"
+  }
+}
+
+///|
+fn import_status_view(model : Model) -> Html {
+  if model.importing {
+    div(class="import-status is-loading", "Reading local file…")
+  } else {
+    match model.import_error {
+      Some(message) => div(class="import-status is-error", message)
+      None =>
+        div(class="source-meta", [
+          span(model.source_name),
+          span(source_size_label(model)),
+        ])
+    }
+  }
 }
 
 ///|
@@ -382,12 +474,24 @@ fn workbench_view(model : Model, emit : Emit[Msg]) -> Html {
       div(class="source-column", [
         div(class="panel-heading", [
           div([span(class="eyebrow", "LOCAL SOURCE"), h2("DBC input")]),
-          button(
-            type_="button",
-            class="secondary-button",
-            on_click=emit(LoadSample),
-            "Load sample",
-          ),
+          div(class="source-actions", [
+            label(class="import-button", [
+              span("Open .dbc"),
+              input(
+                input_type=File,
+                id="dbc-file-input",
+                class="file-input",
+                accept=".dbc,text/plain",
+                on_change=emit.map(_ => FilePicked),
+              ),
+            ]),
+            button(
+              type_="button",
+              class="secondary-button",
+              on_click=emit(LoadSample),
+              "Load sample",
+            ),
+          ]),
         ]),
         textarea(
           class="source-editor",
@@ -396,6 +500,7 @@ fn workbench_view(model : Model, emit : Emit[Msg]) -> Html {
           placeholder="Paste DBC text here…",
           nothing,
         ),
+        import_status_view(model),
         diagnostics_view(result),
       ]),
       div(class="message-column", [
@@ -423,14 +528,82 @@ fn workbench_view(model : Model, emit : Emit[Msg]) -> Html {
 ///|
 fn app() -> Val[Html] {
   let (model, emit) = @rabbita.create_state(
-    { source: sample_dbc, selected_message: 0, },
-    update=fn(_, msg, model) {
-      let next = match msg {
-        SourceChanged(source) => { source, selected_message: 0, }
-        SelectMessage(selected_message) => { ..model, selected_message, }
-        LoadSample => { source: sample_dbc, selected_message: 0, }
+    {
+      source: sample_dbc,
+      selected_message: 0,
+      source_name: "sample.dbc",
+      source_bytes: None,
+      importing: false,
+      import_error: None,
+    },
+    update=fn(send, msg, model) {
+      let (next, command) = match msg {
+        SourceChanged(source) =>
+          (
+            {
+              ..model,
+              source,
+              selected_message: 0,
+              source_name: "Manual input",
+              source_bytes: None,
+              import_error: None,
+            },
+            none,
+          )
+        SelectMessage(selected_message) =>
+          ({ ..model, selected_message, }, none)
+        LoadSample =>
+          (
+            {
+              source: sample_dbc,
+              selected_message: 0,
+              source_name: "sample.dbc",
+              source_bytes: None,
+              importing: false,
+              import_error: None,
+            },
+            none,
+          )
+        FilePicked => {
+          let name = selected_file_name("dbc-file-input")
+          let size = selected_file_size("dbc-file-input")
+          match validate_import_metadata(name, size) {
+            Some(message) => {
+              clear_selected_file("dbc-file-input")
+              (
+                { ..model, importing: false, import_error: Some(message), },
+                none,
+              )
+            }
+            None =>
+              (
+                { ..model, importing: true, import_error: None, },
+                read_selected_file_command(send, name, size),
+              )
+          }
+        }
+        FileReadFinished(result) =>
+          match result {
+            FileReadSuccess(name, source, size) =>
+              (
+                {
+                  source,
+                  selected_message: 0,
+                  source_name: name,
+                  source_bytes: Some(size),
+                  importing: false,
+                  import_error: None,
+                },
+                none,
+              )
+            FileReadFailure(message) =>
+              (
+                { ..model, importing: false, import_error: Some(message), },
+                none,
+              )
+          }
       }
-      (next, none)
+      (next, command)
     },
   )
   model.map(model => workbench_view(model, emit))

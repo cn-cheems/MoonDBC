@@ -69,11 +69,14 @@ h2 { font-size: 1rem; letter-spacing: -0.01em; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 .panel-heading { min-height: 42px; margin-bottom: 12px; }
-.secondary-button {
+.source-actions { display: flex; align-items: center; gap: 7px; }
+.secondary-button, .import-button {
   border: 1px solid var(--line); border-radius: 8px; background: var(--surface-raised);
   padding: 7px 10px; cursor: pointer; font-size: 0.7rem; font-weight: 700;
 }
-.secondary-button:hover { border-color: var(--accent-strong); }
+.import-button { position: relative; color: #07110d; background: var(--accent); border-color: var(--accent); overflow: hidden; }
+.secondary-button:hover, .import-button:hover { border-color: var(--accent-strong); }
+.file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .source-editor {
   width: 100%; min-height: 430px; resize: vertical; border: 1px solid var(--line);
   border-radius: 10px; outline: 0; color: #c7d8d1; background: #090f0e;
@@ -81,6 +84,14 @@ h2 { font-size: 1rem; letter-spacing: -0.01em; }
   padding: 14px; tab-size: 2;
 }
 .source-editor:focus { border-color: var(--accent-strong); box-shadow: 0 0 0 3px rgba(37, 210, 138, 0.08); }
+.source-meta, .import-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 32px; color: var(--muted); font-family: "DM Mono", monospace;
+  font-size: 0.59rem; padding: 8px 3px 0;
+}
+.source-meta span:first-child { overflow: hidden; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.import-status.is-loading { color: var(--accent); }
+.import-status.is-error { color: var(--danger); }
 .status-card {
   display: flex; align-items: flex-start; gap: 10px; margin-top: 12px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px;

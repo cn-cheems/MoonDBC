@@ -2,6 +2,7 @@ import {
   "cn-cheems/moondbc",
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
+  "moonbit-community/rabbita/js",
 }
 
 supported_targets = "js"
