@@ -559,6 +559,32 @@ pub fn run_generate_cli(path : String, source : StringView) -> CliOutput {
 }
 
 ///|
+/// Generate named signal encode/decode functions from a valid DBC source.
+pub fn run_generate_codecs_cli(path : String, source : StringView) -> CliOutput {
+  let parsed = parse_with_source_map(source)
+  if !parsed.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(path, parsed.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let issues = parsed.locate_validation_issues()
+  if !issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(path, issues),
+      exit_code: 1,
+    }
+  }
+  match parsed.database.generate_moonbit_signal_codecs() {
+    Ok(source) => { stdout: "\{source}\n", stderr: "", exit_code: 0, }
+    Err(message) =>
+      { stdout: "", stderr: "\{path}: \{message}\n", exit_code: 1, }
+  }
+}
+
+///|
 fn cli_format_line_is_supported(line : StringView) -> Bool {
   line.is_empty() ||
   line.has_prefix("VERSION") ||

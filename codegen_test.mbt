@@ -180,3 +180,75 @@ test "generate the bus identifier for an extended message" {
     ),
   )
 }
+
+///|
+test "generate deterministic signal codecs without runtime DBC parsing" {
+  let database = @moondbc.parse(
+      (
+        #|BO_ 256 Status: 1 ECU
+        #| SG_ State : 0|8@1+ (0.5,0) [0|127.5] "" ECU
+      ),
+    ).database
+  assert_eq(
+    database.generate_moonbit_signal_codecs(),
+    Ok(
+      (
+        #|// MoonDBC signal codecs. Import cn-cheems/moondbc as @moondbc.
+        #|
+        #|///|
+        #|/// Signal 0 of DBC message 256.
+        #|fn dbc_status_256_state_0_signal() -> @moondbc.Signal {
+        #|  {
+        #|    name: "",
+        #|    start_bit: 0,
+        #|    bit_length: 8,
+        #|    byte_order: @moondbc.Intel,
+        #|    value_kind: @moondbc.Unsigned,
+        #|    value_type: @moondbc.Integer,
+        #|    factor: 0.5,
+        #|    offset: 0,
+        #|    minimum: 0,
+        #|    maximum: 127.5,
+        #|    unit: "",
+        #|    receivers: [],
+        #|    multiplex: @moondbc.Plain,
+        #|  }
+        #|}
+        #|
+        #|///|
+        #|pub fn decode_dbc_status_256_state_0(
+        #|  payload : BytesView,
+        #|) -> Result[Double, @moondbc.DecodeError] {
+        #|  dbc_status_256_state_0_signal().decode(payload)
+        #|}
+        #|
+        #|///|
+        #|pub fn encode_dbc_status_256_state_0(
+        #|  payload : BytesView,
+        #|  physical : Double,
+        #|) -> Result[Bytes, @moondbc.EncodeError] {
+        #|  dbc_status_256_state_0_signal().encode(payload, physical)
+        #|}
+      ),
+    ),
+  )
+}
+
+///|
+test "generate codecs for Motorola signed and IEEE-754 signals" {
+  let database = @moondbc.parse(
+      (
+        #|BO_ 300 Measurements: 8 ECU
+        #| SG_ Temperature : 15|8@0- (1,-40) [-40|87] "C" ECU
+        #| SG_ Acceleration : 16|32@1+ (1,0) [-1000|1000] "m/s2" ECU
+        #|SIG_VALTYPE_ 300 Acceleration : 1;
+      ),
+    ).database
+  let generated = database.generate_moonbit_signal_codecs().unwrap()
+  assert_true(generated.find("byte_order: @moondbc.Motorola") is Some(_))
+  assert_true(generated.find("value_kind: @moondbc.Signed") is Some(_))
+  assert_true(generated.find("value_type: @moondbc.Float32") is Some(_))
+  assert_true(
+    generated.find("decode_dbc_measurements_300_acceleration_1") is Some(_),
+  )
+}

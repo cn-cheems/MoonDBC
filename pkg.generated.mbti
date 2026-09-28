@@ -26,6 +26,8 @@ pub fn run_format_cli(String, StringView, Bool) -> CliOutput
 
 pub fn run_generate_cli(String, StringView) -> CliOutput
 
+pub fn run_generate_codecs_cli(String, StringView) -> CliOutput
+
 // Errors
 
 // Types and methods
@@ -167,6 +169,7 @@ pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::generate_moonbit_constants(Self) -> String
+pub fn Database::generate_moonbit_signal_codecs(Self) -> Result[String, String]
 pub fn Database::message_comment(Self, UInt) -> String?
 pub fn Database::node_comment(Self, StringView) -> String?
 pub fn Database::not_equal(Self, Self) -> Bool

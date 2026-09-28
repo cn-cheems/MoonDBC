@@ -90,6 +90,7 @@ moon run --target native cmd/moondbc -- format examples/vehicle.dbc
 moon run --target native cmd/moondbc -- format --check examples/vehicle.dbc
 moon run --target native cmd/moondbc -- diff examples/vehicle.dbc examples/vehicle-v2.dbc
 moon run --target native cmd/moondbc -- generate examples/vehicle.dbc > vehicle_constants.mbt
+moon run --target native cmd/moondbc -- generate-codecs examples/vehicle.dbc > vehicle_codecs.mbt
 ```
 
 `encode` accepts a hexadecimal bus identifier followed by one or more
@@ -109,6 +110,13 @@ new declaration line in the report.
 All CLI commands that validate a DBC include source line and column for
 locatable semantic errors, so malformed layouts can be found directly from CI
 output.
+
+`generate-codecs` emits named MoonBit encode and decode functions for each
+signal. The destination package must import `cn-cheems/moondbc` as `@moondbc`.
+The functions do not parse DBC text at runtime and operate on individual
+signals; use the existing frame API for multiplex branch selection. The
+checked-in [generated codec example](examples/generated/generated.mbt) is
+compiled and tested on the supported targets.
 
 ## Current scope
 
@@ -131,11 +139,12 @@ output.
 - deterministic model comparison for messages, signals, and value tables;
 - compatibility impact classification and deterministic Markdown change reports;
 - standalone MoonBit constant generation for static CAN metadata;
+- named, statically configured MoonBit signal codec generation;
 - deterministic DBC export with parse-write-parse round-trip support;
 - Classical CAN and CAN FD SocketCAN/candump parsing, formatting, and direct decoding;
 - recoverable multi-frame trace decoding and CSV signal export;
 - recoverable diagnostics for malformed and misplaced declarations;
-- native `check`, `list`, trace-to-CSV `decode`, physical-value `encode`, deterministic `format`, compatibility `diff`, and MoonBit `generate` commands;
+- native `check`, `list`, trace-to-CSV `decode`, physical-value `encode`, deterministic `format`, compatibility `diff`, `generate`, and `generate-codecs` commands;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 

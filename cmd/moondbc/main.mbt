@@ -70,6 +70,17 @@ fn command() -> @argparse.Command {
         ],
       ),
       @argparse.Command(
+        "generate-codecs",
+        about="Generate MoonBit signal encode/decode functions from a DBC file.",
+        positionals=[
+          @argparse.PositionArg(
+            "dbc",
+            about="Path to the DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ],
+      ),
+      @argparse.Command(
         "encode",
         about="Encode physical signal values as a SocketCAN frame.",
         positionals=[
@@ -171,6 +182,8 @@ async fn main {
       @lib.run_format_cli(path, source, check_only)
     } else if name == "generate" {
       @lib.run_generate_cli(path, source)
+    } else if name == "generate-codecs" {
+      @lib.run_generate_codecs_cli(path, source)
     } else {
       let mode = if name == "check" { @lib.CliCheck } else { @lib.CliList }
       @lib.run_cli(mode, path, source)

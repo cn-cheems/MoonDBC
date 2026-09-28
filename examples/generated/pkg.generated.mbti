@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "cn-cheems/moondbc/examples/generated"
+
+import {
+  "cn-cheems/moondbc",
+}
+
+// Values
+pub fn decode_dbc_status_256_state_0(BytesView) -> Result[Double, @moondbc.DecodeError]
+
+pub fn encode_dbc_status_256_state_0(BytesView, Double) -> Result[Bytes, @moondbc.EncodeError]
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -353,6 +353,33 @@ test "generate MoonBit constants from a DBC file" {
 }
 
 ///|
+test "generate named signal codecs and reject invalid DBC layouts" {
+  let source =
+    #|BO_ 256 Status: 1 ECU
+    #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
+  let generated = @moondbc.run_generate_codecs_cli("status.dbc", source)
+  assert_eq(generated.exit_code, 0)
+  assert_eq(generated.stderr, "")
+  assert_true(
+    generated.stdout.find("pub fn decode_dbc_status_256_state_0") is Some(_),
+  )
+  assert_true(
+    generated.stdout.find("pub fn encode_dbc_status_256_state_0") is Some(_),
+  )
+  let invalid = @moondbc.run_generate_codecs_cli(
+    "broken.dbc",
+    (
+      #|BO_ 256 Status: 1 ECU
+      #| SG_ First : 0|8@1+ (1,0) [0|255] "" ECU
+      #| SG_ Second : 4|4@1+ (1,0) [0|15] "" ECU
+    ),
+  )
+  assert_eq(invalid.stdout, "")
+  assert_eq(invalid.exit_code, 1)
+  assert_true(invalid.stderr.find("broken.dbc:3:2:") is Some(_))
+}
+
+///|
 test "reject invalid DBC input during generation" {
   let output = @moondbc.run_generate_cli(
     "invalid.dbc",
