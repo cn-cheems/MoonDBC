@@ -48,8 +48,9 @@ fn cli_diagnostics(path : String, diagnostics : Array[Diagnostic]) -> String {
 }
 
 ///|
-fn cli_validation_issue(issue : ValidationIssue) -> String {
-  match issue {
+/// Human-readable explanation of a semantic DBC validation issue.
+pub fn ValidationIssue::description(self : ValidationIssue) -> String {
+  match self {
     InvalidMessageIdentifierIssue(id) =>
       "message \{id} has an invalid DBC identifier"
     DuplicateMessageIdIssue(id) =>
@@ -96,7 +97,7 @@ fn cli_validation_issues(
 ) -> String {
   let lines : Array[String] = []
   for issue in issues {
-    lines.push("\{path}: \{cli_validation_issue(issue)}")
+    lines.push("\{path}: \{issue.description()}")
   }
   "\{lines.join("\n")}\n"
 }

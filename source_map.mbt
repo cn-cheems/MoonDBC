@@ -37,6 +37,12 @@ pub(all) struct SourceParseResult {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct LocatedValidationIssue {
+  issue : ValidationIssue
+  source : SourceSpan?
+} derive(Eq, Debug)
+
+///|
 pub fn SourceParseResult::is_valid(self : SourceParseResult) -> Bool {
   self.diagnostics.is_empty()
 }
@@ -67,4 +73,50 @@ pub fn DbcSourceMap::find_signal(
     }
   }
   None
+}
+
+///|
+fn validation_issue_source(
+  source_map : DbcSourceMap,
+  issue : ValidationIssue,
+) -> SourceSpan? {
+  match issue {
+    InvalidMessageIdentifierIssue(id) => source_map.find_message(id)
+    DuplicateMessageIdIssue(id) => source_map.find_message(id)
+    InvalidPayloadSizeIssue(id, _) => source_map.find_message(id)
+    MultipleMultiplexersIssue(id) => source_map.find_message(id)
+    DuplicateMessageTransmitterIssue(id, _) => source_map.find_message(id)
+    DuplicateSignalNameIssue(id, name) => source_map.find_signal(id, name)
+    InvalidSignalLayoutIssue(id, name, _, _) => source_map.find_signal(id, name)
+    InvalidSignalValueTypeIssue(id, name, _, _) =>
+      source_map.find_signal(id, name)
+    FloatingMultiplexerIssue(id, name, _) => source_map.find_signal(id, name)
+    SignalOutsidePayloadIssue(id, name) => source_map.find_signal(id, name)
+    InvalidScaleIssue(id, name, _, _) => source_map.find_signal(id, name)
+    InvalidPhysicalRangeIssue(id, name, _, _) =>
+      source_map.find_signal(id, name)
+    MissingMultiplexerIssue(id, name) => source_map.find_signal(id, name)
+    MultiplexSelectorOutOfRangeIssue(id, name, _) =>
+      source_map.find_signal(id, name)
+    OverlappingSignalsIssue(id, _, right) => source_map.find_signal(id, right)
+    DuplicateCommentIssue(_) => None
+    UnknownCommentNodeIssue(_) => None
+    UnknownCommentMessageIssue(_) => None
+    UnknownCommentSignalIssue(_, _) => None
+  }
+}
+
+///|
+/// Validate the parsed model and attach declaration locations where available.
+/// Overlap issues point to the later signal; comment issues without declaration
+/// locations retain `None` rather than inventing a source position.
+pub fn SourceParseResult::locate_validation_issues(
+  self : SourceParseResult,
+) -> Array[LocatedValidationIssue] {
+  self.database
+  .validate()
+  .map(issue => {
+    issue,
+    source: validation_issue_source(self.source_map, issue),
+  })
 }

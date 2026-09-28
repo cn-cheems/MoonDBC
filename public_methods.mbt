@@ -36,6 +36,12 @@ pub extend CliOutput with Eq::{not_equal, equal}
 pub extend CliOutput with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+pub extend LocatedValidationIssue with Eq::{not_equal, equal}
+
+///|
+pub extend LocatedValidationIssue with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub extend RawValue with Eq::{not_equal, equal}
 
 ///|

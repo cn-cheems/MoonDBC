@@ -389,6 +389,14 @@ pub fn FrameLayoutOwner::equal(Self, Self) -> Bool
 pub fn FrameLayoutOwner::not_equal(Self, Self) -> Bool
 pub fn FrameLayoutOwner::to_repr(Self) -> @debug.Repr
 
+pub(all) struct LocatedValidationIssue {
+  issue : ValidationIssue
+  source : SourceSpan?
+} derive(Eq, @debug.Debug)
+pub fn LocatedValidationIssue::equal(Self, Self) -> Bool
+pub fn LocatedValidationIssue::not_equal(Self, Self) -> Bool
+pub fn LocatedValidationIssue::to_repr(Self) -> @debug.Repr
+
 pub(all) struct Message {
   id : UInt
   name : String
@@ -511,6 +519,7 @@ pub(all) struct SourceParseResult {
 pub fn SourceParseResult::analyze_frame_layout(Self, UInt) -> Result[FrameLayoutAnalysis, FrameLayoutError]
 pub fn SourceParseResult::equal(Self, Self) -> Bool
 pub fn SourceParseResult::is_valid(Self) -> Bool
+pub fn SourceParseResult::locate_validation_issues(Self) -> Array[LocatedValidationIssue]
 pub fn SourceParseResult::not_equal(Self, Self) -> Bool
 pub fn SourceParseResult::to_repr(Self) -> @debug.Repr
 
@@ -573,6 +582,7 @@ pub(all) enum ValidationIssue {
   UnknownCommentSignalIssue(UInt, String)
   DuplicateMessageTransmitterIssue(UInt, String)
 } derive(Eq, @debug.Debug)
+pub fn ValidationIssue::description(Self) -> String
 pub fn ValidationIssue::equal(Self, Self) -> Bool
 pub fn ValidationIssue::not_equal(Self, Self) -> Bool
 pub fn ValidationIssue::to_repr(Self) -> @debug.Repr

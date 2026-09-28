@@ -47,6 +47,9 @@ for owner in first_bit.owners {
 Each layout cell is classified as unused, singly occupied, shared by mutually
 exclusive multiplex branches, or conflicting. Invalid and out-of-payload
 signals retain their original declaration ranges in layout issues.
+`parsed.locate_validation_issues()` also attaches source ranges to semantic
+failures such as overlapping signals; issues without a retained declaration
+location explicitly report no source range.
 
 Run the example and tests with the current MoonBit toolchain:
 
