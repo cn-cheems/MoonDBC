@@ -33,7 +33,8 @@ let csv = trace.to_csv().unwrap()
 ```
 
 Source-aware parsing can drive bit-layout views and editors without adding
-location fields to the semantic DBC model:
+location fields to the semantic DBC model. Message, signal, and comment
+declarations are available through the source map:
 
 ```moonbit
 let parsed = @moondbc.parse_with_source_map(source)

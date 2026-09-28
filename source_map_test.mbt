@@ -36,3 +36,22 @@ test "locate message-level semantic failures on the message declaration" {
     "message 12C standard has multiple multiplexers",
   )
 }
+
+///|
+test "source map retains comment declaration ranges for unresolved targets" {
+  let parsed = @moondbc.parse_with_source_map(
+    (
+      #|CM_ BU_ Missing "Unknown node";
+      #|CM_ BO_ 999 "Unknown message";
+    ),
+  )
+  assert_eq(parsed.diagnostics.length(), 2)
+  assert_eq(
+    parsed.source_map.find_comment(@moondbc.NodeComment("Missing")).unwrap().start_line,
+    1,
+  )
+  assert_eq(
+    parsed.source_map.find_comment(@moondbc.MessageComment(999U)).unwrap().start_line,
+    2,
+  )
+}

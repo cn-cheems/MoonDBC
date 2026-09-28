@@ -120,6 +120,14 @@ pub fn CliOutput::equal(Self, Self) -> Bool
 pub fn CliOutput::not_equal(Self, Self) -> Bool
 pub fn CliOutput::to_repr(Self) -> @debug.Repr
 
+pub(all) struct CommentSourceLocation {
+  target : DbcCommentTarget
+  declaration : SourceSpan
+} derive(Eq, @debug.Debug)
+pub fn CommentSourceLocation::equal(Self, Self) -> Bool
+pub fn CommentSourceLocation::not_equal(Self, Self) -> Bool
+pub fn CommentSourceLocation::to_repr(Self) -> @debug.Repr
+
 pub(all) struct CompatibilityReport {
   changes : Array[ClassifiedChange]
   breaking_count : Int
@@ -211,8 +219,10 @@ pub fn DbcCommentTarget::to_repr(Self) -> @debug.Repr
 pub(all) struct DbcSourceMap {
   messages : Array[MessageSourceLocation]
   signals : Array[SignalSourceLocation]
+  comments : Array[CommentSourceLocation]
 } derive(Eq, @debug.Debug)
 pub fn DbcSourceMap::equal(Self, Self) -> Bool
+pub fn DbcSourceMap::find_comment(Self, DbcCommentTarget) -> SourceSpan?
 pub fn DbcSourceMap::find_message(Self, UInt) -> SourceSpan?
 pub fn DbcSourceMap::find_signal(Self, UInt, StringView) -> SourceSpan?
 pub fn DbcSourceMap::not_equal(Self, Self) -> Bool

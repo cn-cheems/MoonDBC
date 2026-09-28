@@ -51,6 +51,7 @@ priv struct PendingDbcComment {
   line : Int
   target : DbcCommentTarget
   text : String
+  declaration : SourceSpan
 }
 
 ///|
@@ -651,6 +652,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let messages : Array[Message] = []
   let message_locations : Array[MessageSourceLocation] = []
   let signal_locations : Array[SignalSourceLocation] = []
+  let comment_locations : Array[CommentSourceLocation] = []
   let nodes : Array[String] = []
   let pending_value_tables : Array[PendingValueTable] = []
   let value_tables : Array[ValueTable] = []
@@ -782,7 +784,12 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
     } else if line.has_prefix("CM_ ") {
       match parse_comment_line(line) {
         Ok((target, text)) =>
-          pending_comments.push({ line: line_number, target, text, })
+          pending_comments.push({
+            line: line_number,
+            target,
+            text,
+            declaration: declaration_span(raw_line, line, line_number),
+          })
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC011", message)
       }
@@ -844,6 +851,10 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
     }
   }
   for pending in pending_comments {
+    comment_locations.push({
+      target: pending.target,
+      declaration: pending.declaration,
+    })
     let target_exists = match pending.target {
       DatabaseComment => true
       NodeComment(name) =>
@@ -987,7 +998,11 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   {
     database: { version, nodes, messages, value_tables, comments, },
     diagnostics,
-    source_map: { messages: message_locations, signals: signal_locations, },
+    source_map: {
+      messages: message_locations,
+      signals: signal_locations,
+      comments: comment_locations,
+    },
   }
 }
 

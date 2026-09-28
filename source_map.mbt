@@ -22,11 +22,18 @@ pub(all) struct SignalSourceLocation {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct CommentSourceLocation {
+  target : DbcCommentTarget
+  declaration : SourceSpan
+} derive(Eq, Debug)
+
+///|
 /// Source locations are kept separately from the semantic model so manually
 /// constructed databases and existing `parse` callers remain source-agnostic.
 pub(all) struct DbcSourceMap {
   messages : Array[MessageSourceLocation]
   signals : Array[SignalSourceLocation]
+  comments : Array[CommentSourceLocation]
 } derive(Eq, Debug)
 
 ///|
@@ -76,6 +83,19 @@ pub fn DbcSourceMap::find_signal(
 }
 
 ///|
+pub fn DbcSourceMap::find_comment(
+  self : DbcSourceMap,
+  target : DbcCommentTarget,
+) -> SourceSpan? {
+  for location in self.comments {
+    if location.target == target {
+      return Some(location.declaration)
+    }
+  }
+  None
+}
+
+///|
 fn validation_issue_source(
   source_map : DbcSourceMap,
   issue : ValidationIssue,
@@ -99,10 +119,12 @@ fn validation_issue_source(
     MultiplexSelectorOutOfRangeIssue(id, name, _) =>
       source_map.find_signal(id, name)
     OverlappingSignalsIssue(id, _, right) => source_map.find_signal(id, right)
-    DuplicateCommentIssue(_) => None
-    UnknownCommentNodeIssue(_) => None
-    UnknownCommentMessageIssue(_) => None
-    UnknownCommentSignalIssue(_, _) => None
+    DuplicateCommentIssue(target) => source_map.find_comment(target)
+    UnknownCommentNodeIssue(node) => source_map.find_comment(NodeComment(node))
+    UnknownCommentMessageIssue(id) =>
+      source_map.find_comment(MessageComment(id))
+    UnknownCommentSignalIssue(id, name) =>
+      source_map.find_comment(SignalComment(id, name))
   }
 }
 

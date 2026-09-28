@@ -252,6 +252,12 @@ pub extend SignalSourceLocation with Eq::{not_equal, equal}
 pub extend SignalSourceLocation with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+pub extend CommentSourceLocation with Eq::{not_equal, equal}
+
+///|
+pub extend CommentSourceLocation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub extend DbcSourceMap with Eq::{not_equal, equal}
 
 ///|
