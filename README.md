@@ -100,6 +100,9 @@ silently removed.
 
 `diff` writes a Markdown compatibility report. It exits with status `3` when
 breaking changes are present, so the command can act as a CI compatibility gate.
+All CLI commands that validate a DBC include source line and column for
+locatable semantic errors, so malformed layouts can be found directly from CI
+output.
 
 ## Current scope
 

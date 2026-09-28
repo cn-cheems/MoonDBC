@@ -78,8 +78,32 @@ test "report semantic validation failures through the command line" {
   assert_eq(output.exit_code, 1)
   assert_eq(
     output.stderr,
-    "overlap.dbc: signals First and Second overlap in message 12C standard\n",
+    "overlap.dbc:3:2: signals First and Second overlap in message 12C standard\n",
   )
+}
+
+///|
+test "all DBC CLI gates retain semantic source positions" {
+  let invalid =
+    #|BO_ 300 Status: 1 ECU
+    #| SG_ First : 0|8@1+ (1,0) [0|255] "" ECU
+    #| SG_ Second : 4|4@1+ (1,0) [0|15] "" ECU
+  let expected = "invalid.dbc:3:2: signals First and Second overlap in message 12C standard\n"
+  let outputs = [
+    @moondbc.run_cli(@moondbc.CliList, "invalid.dbc", invalid),
+    @moondbc.run_decode_cli("invalid.dbc", invalid, "capture.log", "12C#00"),
+    @moondbc.run_diff_cli(
+      "valid.dbc", "BO_ 300 Status: 1 ECU\n SG_ First : 0|8@1+ (1,0) [0|255] \"\" ECU",
+      "invalid.dbc", invalid,
+    ),
+    @moondbc.run_generate_cli("invalid.dbc", invalid),
+    @moondbc.run_format_cli("invalid.dbc", invalid, false),
+    @moondbc.run_encode_cli("invalid.dbc", invalid, "12C", ["First=1"]),
+  ]
+  for output in outputs {
+    assert_eq(output.exit_code, 1)
+    assert_eq(output.stderr, expected)
+  }
 }
 
 ///|
@@ -212,7 +236,7 @@ test "reject an invalid DBC before decoding a trace" {
   assert_eq(output.exit_code, 1)
   assert_eq(
     output.stderr,
-    "invalid.dbc: signals First and Second overlap in message 12C standard\n",
+    "invalid.dbc:3:2: signals First and Second overlap in message 12C standard\n",
   )
 }
 
@@ -311,7 +335,7 @@ test "reject invalid DBC input during generation" {
   assert_eq(output.exit_code, 1)
   assert_eq(
     output.stderr,
-    "invalid.dbc: signals First and Second overlap in message 12C standard\n",
+    "invalid.dbc:3:2: signals First and Second overlap in message 12C standard\n",
   )
 }
 

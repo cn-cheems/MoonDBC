@@ -93,11 +93,17 @@ pub fn ValidationIssue::description(self : ValidationIssue) -> String {
 ///|
 fn cli_validation_issues(
   path : String,
-  issues : Array[ValidationIssue],
+  issues : Array[LocatedValidationIssue],
 ) -> String {
   let lines : Array[String] = []
-  for issue in issues {
-    lines.push("\{path}: \{issue.description()}")
+  for located in issues {
+    match located.source {
+      Some(span) =>
+        lines.push(
+          "\{path}:\{span.start_line}:\{span.start_column}: \{located.issue.description()}",
+        )
+      None => lines.push("\{path}: \{located.issue.description()}")
+    }
   }
   "\{lines.join("\n")}\n"
 }
@@ -281,8 +287,8 @@ fn cli_trace_diagnostics(
 }
 
 ///|
-fn cli_check(path : String, database : Database) -> CliOutput {
-  let issues = database.validate()
+fn cli_check(path : String, parsed : SourceParseResult) -> CliOutput {
+  let issues = parsed.locate_validation_issues()
   if !issues.is_empty() {
     return {
       stdout: "",
@@ -290,6 +296,7 @@ fn cli_check(path : String, database : Database) -> CliOutput {
       exit_code: 1,
     }
   }
+  let database = parsed.database
   {
     stdout: [
       "OK \{path}",
@@ -369,7 +376,7 @@ fn cli_list(database : Database) -> String {
 /// file access outside this function makes command behavior portable and easy
 /// to test independently from the native executable.
 pub fn run_cli(mode : CliMode, path : String, source : StringView) -> CliOutput {
-  let parsed = parse(source)
+  let parsed = parse_with_source_map(source)
   if !parsed.diagnostics.is_empty() {
     return {
       stdout: "",
@@ -378,9 +385,9 @@ pub fn run_cli(mode : CliMode, path : String, source : StringView) -> CliOutput 
     }
   }
   match mode {
-    CliCheck => cli_check(path, parsed.database)
+    CliCheck => cli_check(path, parsed)
     CliList => {
-      let issues = parsed.database.validate()
+      let issues = parsed.locate_validation_issues()
       {
         stdout: cli_list(parsed.database),
         stderr: if issues.is_empty() {
@@ -409,7 +416,7 @@ pub fn run_decode_cli(
   trace_path : String,
   trace_source : StringView,
 ) -> CliOutput {
-  let parsed = parse(dbc_source)
+  let parsed = parse_with_source_map(dbc_source)
   if !parsed.diagnostics.is_empty() {
     return {
       stdout: "",
@@ -417,7 +424,7 @@ pub fn run_decode_cli(
       exit_code: 1,
     }
   }
-  let issues = parsed.database.validate()
+  let issues = parsed.locate_validation_issues()
   if !issues.is_empty() {
     return {
       stdout: "",
@@ -456,7 +463,7 @@ pub fn run_diff_cli(
   after_path : String,
   after_source : StringView,
 ) -> CliOutput {
-  let before = parse(before_source)
+  let before = parse_with_source_map(before_source)
   if !before.diagnostics.is_empty() {
     return {
       stdout: "",
@@ -464,7 +471,7 @@ pub fn run_diff_cli(
       exit_code: 1,
     }
   }
-  let before_issues = before.database.validate()
+  let before_issues = before.locate_validation_issues()
   if !before_issues.is_empty() {
     return {
       stdout: "",
@@ -472,7 +479,7 @@ pub fn run_diff_cli(
       exit_code: 1,
     }
   }
-  let after = parse(after_source)
+  let after = parse_with_source_map(after_source)
   if !after.diagnostics.is_empty() {
     return {
       stdout: "",
@@ -480,7 +487,7 @@ pub fn run_diff_cli(
       exit_code: 1,
     }
   }
-  let after_issues = after.database.validate()
+  let after_issues = after.locate_validation_issues()
   if !after_issues.is_empty() {
     return {
       stdout: "",
@@ -508,7 +515,7 @@ pub fn run_diff_cli(
 /// Parse and validate a DBC source, then generate standalone MoonBit constants
 /// for build-time integration.
 pub fn run_generate_cli(path : String, source : StringView) -> CliOutput {
-  let parsed = parse(source)
+  let parsed = parse_with_source_map(source)
   if !parsed.diagnostics.is_empty() {
     return {
       stdout: "",
@@ -516,7 +523,7 @@ pub fn run_generate_cli(path : String, source : StringView) -> CliOutput {
       exit_code: 1,
     }
   }
-  let issues = parsed.database.validate()
+  let issues = parsed.locate_validation_issues()
   if !issues.is_empty() {
     return {
       stdout: "",
@@ -576,7 +583,7 @@ pub fn run_format_cli(
       }
     None => ()
   }
-  let parsed = parse(source)
+  let parsed = parse_with_source_map(source)
   if !parsed.diagnostics.is_empty() {
     return {
       stdout: "",
@@ -584,7 +591,7 @@ pub fn run_format_cli(
       exit_code: 1,
     }
   }
-  let issues = parsed.database.validate()
+  let issues = parsed.locate_validation_issues()
   if !issues.is_empty() {
     return {
       stdout: "",
@@ -645,7 +652,7 @@ pub fn run_encode_cli(
   identifier : String,
   assignment_texts : Array[String],
 ) -> CliOutput {
-  let parsed = parse(source)
+  let parsed = parse_with_source_map(source)
   if !parsed.diagnostics.is_empty() {
     return {
       stdout: "",
@@ -653,7 +660,7 @@ pub fn run_encode_cli(
       exit_code: 1,
     }
   }
-  let issues = parsed.database.validate()
+  let issues = parsed.locate_validation_issues()
   if !issues.is_empty() {
     return {
       stdout: "",
