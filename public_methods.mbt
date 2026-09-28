@@ -42,6 +42,12 @@ pub extend LocatedValidationIssue with Eq::{not_equal, equal}
 pub extend LocatedValidationIssue with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+pub extend LocatedDatabaseChange with Eq::{not_equal, equal}
+
+///|
+pub extend LocatedDatabaseChange with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub extend RawValue with Eq::{not_equal, equal}
 
 ///|
@@ -256,6 +262,14 @@ pub extend CommentSourceLocation with Eq::{not_equal, equal}
 
 ///|
 pub extend CommentSourceLocation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ValueTableSourceLocation with Eq::{not_equal, equal}
+
+///|
+pub extend ValueTableSourceLocation with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
 
 ///|
 pub extend DbcSourceMap with Eq::{not_equal, equal}

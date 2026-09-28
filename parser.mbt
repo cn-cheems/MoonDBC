@@ -44,6 +44,7 @@ priv struct PendingValueTable {
   message_id : UInt
   signal_name : String
   entries : Array[ValueDescription]
+  declaration : SourceSpan
 }
 
 ///|
@@ -653,6 +654,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let message_locations : Array[MessageSourceLocation] = []
   let signal_locations : Array[SignalSourceLocation] = []
   let comment_locations : Array[CommentSourceLocation] = []
+  let value_table_locations : Array[ValueTableSourceLocation] = []
   let nodes : Array[String] = []
   let pending_value_tables : Array[PendingValueTable] = []
   let value_tables : Array[ValueTable] = []
@@ -801,6 +803,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
             message_id,
             signal_name,
             entries,
+            declaration: declaration_span(raw_line, line, line_number),
           })
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC007", message)
@@ -845,6 +848,11 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
             message_id: pending.message_id,
             signal_name: pending.signal_name,
             entries: pending.entries,
+          })
+          value_table_locations.push({
+            message_id: pending.message_id,
+            signal_name: pending.signal_name,
+            declaration: pending.declaration,
           })
         }
       }
@@ -1002,6 +1010,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
       messages: message_locations,
       signals: signal_locations,
       comments: comment_locations,
+      value_tables: value_table_locations,
     },
   }
 }

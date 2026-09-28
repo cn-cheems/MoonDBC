@@ -220,11 +220,13 @@ pub(all) struct DbcSourceMap {
   messages : Array[MessageSourceLocation]
   signals : Array[SignalSourceLocation]
   comments : Array[CommentSourceLocation]
+  value_tables : Array[ValueTableSourceLocation]
 } derive(Eq, @debug.Debug)
 pub fn DbcSourceMap::equal(Self, Self) -> Bool
 pub fn DbcSourceMap::find_comment(Self, DbcCommentTarget) -> SourceSpan?
 pub fn DbcSourceMap::find_message(Self, UInt) -> SourceSpan?
 pub fn DbcSourceMap::find_signal(Self, UInt, StringView) -> SourceSpan?
+pub fn DbcSourceMap::find_value_table(Self, UInt, StringView) -> SourceSpan?
 pub fn DbcSourceMap::not_equal(Self, Self) -> Bool
 pub fn DbcSourceMap::to_repr(Self) -> @debug.Repr
 
@@ -399,6 +401,15 @@ pub fn FrameLayoutOwner::equal(Self, Self) -> Bool
 pub fn FrameLayoutOwner::not_equal(Self, Self) -> Bool
 pub fn FrameLayoutOwner::to_repr(Self) -> @debug.Repr
 
+pub(all) struct LocatedDatabaseChange {
+  change : DatabaseChange
+  before : SourceSpan?
+  after : SourceSpan?
+} derive(Eq, @debug.Debug)
+pub fn LocatedDatabaseChange::equal(Self, Self) -> Bool
+pub fn LocatedDatabaseChange::not_equal(Self, Self) -> Bool
+pub fn LocatedDatabaseChange::to_repr(Self) -> @debug.Repr
+
 pub(all) struct LocatedValidationIssue {
   issue : ValidationIssue
   source : SourceSpan?
@@ -527,6 +538,7 @@ pub(all) struct SourceParseResult {
   source_map : DbcSourceMap
 } derive(Eq, @debug.Debug)
 pub fn SourceParseResult::analyze_frame_layout(Self, UInt) -> Result[FrameLayoutAnalysis, FrameLayoutError]
+pub fn SourceParseResult::diff_with_locations(Self, Self) -> Array[LocatedDatabaseChange]
 pub fn SourceParseResult::equal(Self, Self) -> Bool
 pub fn SourceParseResult::is_valid(Self) -> Bool
 pub fn SourceParseResult::locate_validation_issues(Self) -> Array[LocatedValidationIssue]
@@ -622,6 +634,15 @@ pub fn ValueTable::equal(Self, Self) -> Bool
 pub fn ValueTable::find_label(Self, Int64) -> String?
 pub fn ValueTable::not_equal(Self, Self) -> Bool
 pub fn ValueTable::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ValueTableSourceLocation {
+  message_id : UInt
+  signal_name : String
+  declaration : SourceSpan
+} derive(Eq, @debug.Debug)
+pub fn ValueTableSourceLocation::equal(Self, Self) -> Bool
+pub fn ValueTableSourceLocation::not_equal(Self, Self) -> Bool
+pub fn ValueTableSourceLocation::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

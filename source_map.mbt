@@ -28,12 +28,20 @@ pub(all) struct CommentSourceLocation {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct ValueTableSourceLocation {
+  message_id : UInt
+  signal_name : String
+  declaration : SourceSpan
+} derive(Eq, Debug)
+
+///|
 /// Source locations are kept separately from the semantic model so manually
 /// constructed databases and existing `parse` callers remain source-agnostic.
 pub(all) struct DbcSourceMap {
   messages : Array[MessageSourceLocation]
   signals : Array[SignalSourceLocation]
   comments : Array[CommentSourceLocation]
+  value_tables : Array[ValueTableSourceLocation]
 } derive(Eq, Debug)
 
 ///|
@@ -47,6 +55,13 @@ pub(all) struct SourceParseResult {
 pub(all) struct LocatedValidationIssue {
   issue : ValidationIssue
   source : SourceSpan?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct LocatedDatabaseChange {
+  change : DatabaseChange
+  before : SourceSpan?
+  after : SourceSpan?
 } derive(Eq, Debug)
 
 ///|
@@ -93,6 +108,72 @@ pub fn DbcSourceMap::find_comment(
     }
   }
   None
+}
+
+///|
+pub fn DbcSourceMap::find_value_table(
+  self : DbcSourceMap,
+  message_id : UInt,
+  signal_name : StringView,
+) -> SourceSpan? {
+  for location in self.value_tables {
+    if location.message_id == message_id &&
+      location.signal_name.view() == signal_name {
+      return Some(location.declaration)
+    }
+  }
+  None
+}
+
+///|
+fn change_source(
+  source_map : DbcSourceMap,
+  change : DatabaseChange,
+) -> SourceSpan? {
+  match change {
+    VersionChangedChange(_, _) | NodesChangedChange(_, _) => None
+    CommentAddedChange(comment) | CommentRemovedChange(comment) =>
+      source_map.find_comment(comment.target)
+    CommentModifiedChange(target, _, _) => source_map.find_comment(target)
+    MessageAddedChange(message) | MessageRemovedChange(message) =>
+      source_map.find_message(message.id)
+    MessageMetadataChangedChange(id, _, _) => source_map.find_message(id)
+    SignalAddedChange(id, signal) | SignalRemovedChange(id, signal) =>
+      source_map.find_signal(id, signal.name)
+    SignalModifiedChange(id, name, _, _) => source_map.find_signal(id, name)
+    ValueTableAddedChange(table) | ValueTableRemovedChange(table) =>
+      source_map.find_value_table(table.message_id, table.signal_name)
+    ValueTableModifiedChange(id, name, _, _) =>
+      source_map.find_value_table(id, name)
+  }
+}
+
+///|
+/// Compare parsed DBCs and attach the old and new declaration ranges to each
+/// change. Global metadata has no declaration mapping and returns `None`.
+pub fn SourceParseResult::diff_with_locations(
+  self : SourceParseResult,
+  newer : SourceParseResult,
+) -> Array[LocatedDatabaseChange] {
+  let result : Array[LocatedDatabaseChange] = []
+  for change in self.database.diff(newer.database) {
+    let old_location = match change {
+      CommentAddedChange(_)
+      | MessageAddedChange(_)
+      | SignalAddedChange(_, _)
+      | ValueTableAddedChange(_) => None
+      _ => change_source(self.source_map, change)
+    }
+    let new_location = match change {
+      CommentRemovedChange(_)
+      | MessageRemovedChange(_)
+      | SignalRemovedChange(_, _)
+      | ValueTableRemovedChange(_) => None
+      _ => change_source(newer.source_map, change)
+    }
+    result.push({ change, before: old_location, after: new_location, })
+  }
+  result
 }
 
 ///|

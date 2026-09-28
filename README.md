@@ -51,6 +51,9 @@ signals retain their original declaration ranges in layout issues.
 `parsed.locate_validation_issues()` also attaches source ranges to semantic
 failures such as overlapping signals; issues without a retained declaration
 location explicitly report no source range.
+For two parsed revisions, `before.diff_with_locations(after)` pairs each
+structural change with the old and new declaration ranges, including `VAL_`
+value tables.
 
 Run the example and tests with the current MoonBit toolchain:
 
