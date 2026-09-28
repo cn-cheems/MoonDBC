@@ -143,8 +143,11 @@ pub fn CompatibilityReport::is_backward_compatible(
 }
 
 ///|
-/// Render a deterministic Markdown report for pull requests and CI artifacts.
-pub fn CompatibilityReport::to_markdown(self : CompatibilityReport) -> String {
+/// Render a deterministic Markdown report with optional per-change details.
+fn CompatibilityReport::render_markdown(
+  self : CompatibilityReport,
+  suffixes : Array[String],
+) -> String {
   let lines = [
     "# DBC Compatibility Report",
     "",
@@ -158,11 +161,18 @@ pub fn CompatibilityReport::to_markdown(self : CompatibilityReport) -> String {
   } else {
     lines.push("## Changes")
     lines.push("")
-    for classified in self.changes {
+    for index, classified in self.changes {
+      let suffix = if index < suffixes.length() { suffixes[index] } else { "" }
       lines.push(
-        "- **\{impact_label(classified.impact)}**: \{classified.change.summary()}",
+        "- **\{impact_label(classified.impact)}**: \{classified.change.summary()}\{suffix}",
       )
     }
   }
   lines.join("\n")
+}
+
+///|
+/// Render a deterministic Markdown report for pull requests and CI artifacts.
+pub fn CompatibilityReport::to_markdown(self : CompatibilityReport) -> String {
+  self.render_markdown([])
 }

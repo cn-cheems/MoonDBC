@@ -496,8 +496,28 @@ pub fn run_diff_cli(
     }
   }
   let report = before.database.compatibility_report(after.database)
+  let location_suffixes = before
+    .diff_with_locations(after)
+    .map(change => {
+      let positions : Array[String] = []
+      match change.before {
+        Some(span) =>
+          positions.push("old line \{span.start_line}:\{span.start_column}")
+        None => ()
+      }
+      match change.after {
+        Some(span) =>
+          positions.push("new line \{span.start_line}:\{span.start_column}")
+        None => ()
+      }
+      if positions.is_empty() {
+        ""
+      } else {
+        " (\{positions.join("; ")})"
+      }
+    })
   {
-    stdout: "\{report.to_markdown()}\n",
+    stdout: "\{report.render_markdown(location_suffixes)}\n",
     stderr: if report.breaking_count == 0 {
       ""
     } else {

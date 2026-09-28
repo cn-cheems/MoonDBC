@@ -257,7 +257,7 @@ test "accept a backward-compatible DBC revision" {
     output.stdout,
     [
       "# DBC Compatibility Report", "", "- Breaking changes: 0", "- Non-breaking changes: 1",
-      "- Informational changes: 0", "", "## Changes", "", "- **Non-breaking**: Message 502 (Added) was added.",
+      "- Informational changes: 0", "", "## Changes", "", "- **Non-breaking**: Message 502 (Added) was added. (new line 2:1)",
       "",
     ].join("\n"),
   )
@@ -277,9 +277,40 @@ test "fail a compatibility gate on breaking changes" {
     output.stdout,
     [
       "# DBC Compatibility Report", "", "- Breaking changes: 1", "- Non-breaking changes: 1",
-      "- Informational changes: 0", "", "## Changes", "", "- **Breaking**: Message 503 (Removed) was removed.",
-      "- **Non-breaking**: Message 504 (Added) was added.", "",
+      "- Informational changes: 0", "", "## Changes", "", "- **Breaking**: Message 503 (Removed) was removed. (old line 1:1)",
+      "- **Non-breaking**: Message 504 (Added) was added. (new line 1:1)", "",
     ].join("\n"),
+  )
+}
+
+///|
+test "diff report locates changed signals and value tables in both revisions" {
+  let output = @moondbc.run_diff_cli(
+    "old.dbc",
+    (
+      #|BO_ 500 Status: 1 ECU
+      #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
+      #|VAL_ 500 State 0 "Off";
+    ),
+    "new.dbc",
+    (
+      #|BO_ 500 Status: 1 ECU
+      #| SG_ State : 0|8@1+ (2,0) [0|510] "" ECU
+      #|VAL_ 500 State 0 "Stopped";
+    ),
+  )
+  assert_eq(output.exit_code, 3)
+  assert_true(
+    output.stdout.find(
+      "Signal State in message 500 was modified. (old line 2:2; new line 2:2)",
+    )
+    is Some(_),
+  )
+  assert_true(
+    output.stdout.find(
+      "Value table for State in message 500 was modified. (old line 3:1; new line 3:1)",
+    )
+    is Some(_),
   )
 }
 
