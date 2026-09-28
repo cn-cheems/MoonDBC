@@ -75,3 +75,41 @@ test "report duplicate ids and signal names" {
   assert_eq(result.diagnostics[0].code, "DBC006")
   assert_eq(result.diagnostics[1].code, "DBC003")
 }
+
+///|
+test "accept DBC namespace declarations without treating symbols as data" {
+  let source =
+    #|VERSION "1"
+    #|NS_ :
+    #| BA_DEF_
+    #| SG_MUL_VAL_
+    #|
+    #|BS_:
+    #|BU_: ECU
+    #|BO_ 256 Status: 1 ECU
+    #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
+  let parsed = @moondbc.parse(source)
+  assert_true(parsed.is_valid())
+  assert_eq(parsed.database.messages.length(), 1)
+}
+
+///|
+test "reject declarations that would otherwise vanish from the parsed model" {
+  let source =
+    #|NS_ :
+    #| BA_
+    #|
+    #|BO_ 256 Status: 1 ECU
+    #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
+    #|BA_ "GenMsgCycleTime" BO_ 256 100;
+    #|SG_MUL_VAL_ 256 State Mode 1-2;
+    #|BS_: 500000:0,0
+  let parsed = @moondbc.parse(source)
+  assert_false(parsed.is_valid())
+  assert_eq(parsed.diagnostics.length(), 3)
+  assert_eq(parsed.diagnostics[0].line, 6)
+  assert_eq(parsed.diagnostics[0].code, "DBC019")
+  assert_eq(parsed.diagnostics[1].line, 7)
+  assert_eq(parsed.diagnostics[1].code, "DBC019")
+  assert_eq(parsed.diagnostics[2].line, 8)
+}

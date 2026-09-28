@@ -663,11 +663,29 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let diagnostics : Array[Diagnostic] = []
   let mut version : String? = None
   let mut current_message : Int? = None
+  let mut in_namespace = false
   let mut line_number = 0
   for raw_line in source.split("\n") {
     line_number += 1
     let line = raw_line.trim(chars=" \t\r")
     if line.is_empty() {
+      in_namespace = false
+      continue
+    }
+    if line == "NS_ :" || line == "NS_:" {
+      in_namespace = true
+      continue
+    }
+    // NS_ lists declaration names, not declarations. Never discard their
+    // actual occurrences elsewhere in the document.
+    if in_namespace &&
+      line.has_suffix("_") &&
+      !line.contains(" ") &&
+      !line.contains("\t") {
+      continue
+    }
+    in_namespace = false
+    if line == "BS_:" {
       continue
     }
     if line.has_prefix("VERSION") {
@@ -780,6 +798,10 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC007", message)
       }
+    } else {
+      add_diagnostic(
+        diagnostics, line_number, "DBC019", "unsupported DBC declaration; the source cannot be used without losing data",
+      )
     }
   }
   for pending in pending_value_tables {

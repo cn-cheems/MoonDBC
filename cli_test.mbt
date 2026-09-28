@@ -45,6 +45,25 @@ test "report parser diagnostics through the command line" {
 }
 
 ///|
+test "check refuses unsupported declarations instead of reporting OK" {
+  let output = @moondbc.run_cli(
+    @moondbc.CliCheck,
+    "attributes.dbc",
+    (
+      #|BO_ 256 Status: 1 ECU
+      #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
+      #|BA_ "GenMsgCycleTime" BO_ 256 100;
+    ),
+  )
+  assert_eq(output.stdout, "")
+  assert_eq(output.exit_code, 1)
+  assert_eq(
+    output.stderr,
+    "attributes.dbc:3:1 [DBC019] unsupported DBC declaration; the source cannot be used without losing data\n",
+  )
+}
+
+///|
 test "report semantic validation failures through the command line" {
   let output = @moondbc.run_cli(
     @moondbc.CliCheck,
