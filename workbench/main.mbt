@@ -220,13 +220,36 @@ fn metric(label : String, value : String) -> Html {
 }
 
 ///|
-fn diagnostics_view(result : @moondbc.SourceParseResult) -> Html {
+fn workbench_validation_issues(
+  result : @moondbc.SourceParseResult,
+) -> Array[@moondbc.LocatedValidationIssue] {
   if result.diagnostics.is_empty() {
+    result.locate_validation_issues()
+  } else {
+    []
+  }
+}
+
+///|
+fn validation_source_label(source : @moondbc.SourceSpan?) -> String {
+  match source {
+    Some(span) => "line \{span.start_line}:\{span.start_column}"
+    None => "source location unavailable"
+  }
+}
+
+///|
+fn diagnostics_view(
+  result : @moondbc.SourceParseResult,
+  validation_issues : Array[@moondbc.LocatedValidationIssue],
+) -> Html {
+  let total = result.diagnostics.length() + validation_issues.length()
+  if total == 0 {
     div(class="status-card is-valid", [
       span(class="status-dot", ""),
       div([
-        span(class="status-title", "DBC syntax is valid"),
-        p("Source locations and semantic model are ready."),
+        span(class="status-title", "DBC is valid"),
+        p("Syntax and semantic checks passed."),
       ]),
     ])
   } else {
@@ -234,11 +257,8 @@ fn diagnostics_view(result : @moondbc.SourceParseResult) -> Html {
       div(class="status-card is-invalid", [
         span(class="status-dot", ""),
         div([
-          span(
-            class="status-title",
-            "\{result.diagnostics.length()} parser issue(s)",
-          ),
-          p("Fix the source lines below before using the decoded model."),
+          span(class="status-title", "\{total} DBC issue(s)"),
+          p("Fix the issues below before using the decoded model."),
         ]),
       ]),
       div(
@@ -251,6 +271,18 @@ fn diagnostics_view(result : @moondbc.SourceParseResult) -> Html {
               span(
                 class="source-position",
                 "line \{diagnostic.line}:\{diagnostic.column}",
+              ),
+            ]),
+          ])
+        }) +
+        validation_issues.map(located => {
+          div(class="diagnostic-row", [
+            span(class="diagnostic-code", "SEMANTIC"),
+            div([
+              p(class="diagnostic-message", located.issue.description()),
+              span(
+                class="source-position",
+                validation_source_label(located.source),
               ),
             ]),
           ])
@@ -450,6 +482,7 @@ fn message_detail(
 ///|
 fn workbench_view(model : Model, emit : Emit[Msg]) -> Html {
   let result = @moondbc.parse_with_source_map(model.source)
+  let validation_issues = workbench_validation_issues(result)
   let signal_count = result.database.messages.fold(init=0, (count, message) => {
     count + message.signals.length()
   })
@@ -467,7 +500,10 @@ fn workbench_view(model : Model, emit : Emit[Msg]) -> Html {
     div(class="summary-strip", [
       metric("MESSAGES", result.database.messages.length().to_string()),
       metric("SIGNALS", signal_count.to_string()),
-      metric("DIAGNOSTICS", result.diagnostics.length().to_string()),
+      metric(
+        "DIAGNOSTICS",
+        (result.diagnostics.length() + validation_issues.length()).to_string(),
+      ),
       metric("NODES", result.database.nodes.length().to_string()),
     ]),
     div(class="workspace-grid", [
@@ -501,7 +537,7 @@ fn workbench_view(model : Model, emit : Emit[Msg]) -> Html {
           nothing,
         ),
         import_status_view(model),
-        diagnostics_view(result),
+        diagnostics_view(result, validation_issues),
       ]),
       div(class="message-column", [
         div(class="panel-heading", [

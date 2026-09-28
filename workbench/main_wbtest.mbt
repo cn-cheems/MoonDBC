@@ -24,3 +24,25 @@ test "local imports validate file metadata before reading" {
     Some("The file exceeds the 4 MiB import limit."),
   )
 }
+
+///|
+test "workbench includes located semantic failures after parsing succeeds" {
+  let parsed = @moondbc.parse_with_source_map(
+    (
+      #|BO_ 300 Status: 1 ECU
+      #| SG_ First : 0|8@1+ (1,0) [0|255] "" ECU
+      #| SG_ Second : 4|4@1+ (1,0) [0|15] "" ECU
+    ),
+  )
+  assert_eq(parsed.diagnostics, [])
+  let issues = workbench_validation_issues(parsed)
+  assert_eq(issues.length(), 1)
+  assert_eq(issues[0].source.unwrap().start_line, 3)
+}
+
+///|
+test "workbench does not validate a partially parsed model" {
+  let parsed = @moondbc.parse_with_source_map("BA_ \"Ignored\" BO_ 300 1;")
+  assert_eq(parsed.diagnostics.length(), 1)
+  assert_eq(workbench_validation_issues(parsed), [])
+}

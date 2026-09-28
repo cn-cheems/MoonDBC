@@ -63,7 +63,7 @@ moon test --target wasm --deny-warn
 ## Browser workbench
 
 MoonDBC includes a local browser workbench for inspecting DBC source, parser
-diagnostics, messages, signals, and source-aware CAN frame layouts. Parsing runs
+and semantic diagnostics, messages, signals, and source-aware CAN frame layouts. Parsing runs
 in the browser; the DBC text is not uploaded anywhere.
 
 ```text
