@@ -5,6 +5,7 @@ pub(all) enum DbcWriteError {
   DbcWriteInvalidPayloadSize(UInt, Int)
   DbcWriteNonFiniteSignalNumber(UInt, String, String)
   DbcWriteNegativeMultiplexValue(UInt, String, Int)
+  DbcWriteInvalidMultiplexRange(UInt, String, Int, Int)
   DbcWriteEmptyValueTable(UInt, String)
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
@@ -91,6 +92,21 @@ fn signal_multiplex_text(
         Err(DbcWriteNegativeMultiplexValue(message_id, signal.name, value))
       } else {
         Ok(" m\{value}")
+      }
+    MultiplexedRanges(_, ranges) =>
+      if ranges.is_empty() {
+        Err(DbcWriteInvalidMultiplexRange(message_id, signal.name, -1, -1))
+      } else if ranges[0].start < 0 || ranges[0].end < ranges[0].start {
+        Err(
+          DbcWriteInvalidMultiplexRange(
+            message_id,
+            signal.name,
+            ranges[0].start,
+            ranges[0].end,
+          ),
+        )
+      } else {
+        Ok(" m\{ranges[0].start}")
       }
   }
 }
@@ -237,6 +253,59 @@ fn has_signal_value_types(messages : Array[Message]) -> Bool {
 }
 
 ///|
+fn has_extended_multiplexing(messages : Array[Message]) -> Bool {
+  for message in messages {
+    for signal in message.signals {
+      if signal.multiplex is MultiplexedRanges(_, _) {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+fn write_extended_multiplexing(
+  lines : Array[String],
+  message : Message,
+) -> Result[Unit, DbcWriteError] {
+  for signal in message.signals {
+    match signal.multiplex {
+      MultiplexedRanges(selector_name, ranges) => {
+        match check_dbc_token("multiplexer name", selector_name) {
+          Err(error) => return Err(error)
+          Ok(_) => ()
+        }
+        if ranges.is_empty() {
+          return Err(
+            DbcWriteInvalidMultiplexRange(message.id, signal.name, -1, -1),
+          )
+        }
+        let parts : Array[String] = []
+        for range in ranges {
+          if range.start < 0 || range.end < range.start {
+            return Err(
+              DbcWriteInvalidMultiplexRange(
+                message.id,
+                signal.name,
+                range.start,
+                range.end,
+              ),
+            )
+          }
+          parts.push("\{range.start}-\{range.end}")
+        }
+        lines.push(
+          "SG_MUL_VAL_ \{message.id} \{signal.name} \{selector_name} \{parts.join(", ")};",
+        )
+      }
+      _ => ()
+    }
+  }
+  Ok(())
+}
+
+///|
 fn write_signal_value_types(lines : Array[String], message : Message) -> Unit {
   for signal in message.signals {
     match signal.value_type {
@@ -333,6 +402,7 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   let lines : Array[String] = []
   let has_transmitter_section = has_additional_transmitters(self.messages)
   let has_value_type_section = has_signal_value_types(self.messages)
+  let has_extended_multiplex_section = has_extended_multiplexing(self.messages)
   match self.version {
     Some(version) => {
       match check_dbc_quoted_text("database version", version) {
@@ -367,6 +437,7 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
     }
     if index + 1 < self.messages.length() ||
       has_value_type_section ||
+      has_extended_multiplex_section ||
       has_transmitter_section ||
       !self.comments.is_empty() ||
       !self.value_tables.is_empty() {
@@ -377,6 +448,21 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
     write_signal_value_types(lines, message)
   }
   if has_value_type_section &&
+    (
+      has_extended_multiplex_section ||
+      has_transmitter_section ||
+      !self.comments.is_empty() ||
+      !self.value_tables.is_empty()
+    ) {
+    lines.push("")
+  }
+  for message in self.messages {
+    match write_extended_multiplexing(lines, message) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+  }
+  if has_extended_multiplex_section &&
     (
       has_transmitter_section ||
       !self.comments.is_empty() ||

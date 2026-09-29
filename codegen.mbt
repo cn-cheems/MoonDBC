@@ -68,6 +68,15 @@ fn append_signal_constants(
       lines.push("pub const \{prefix}_IS_MULTIPLEXER : Bool = true")
     Multiplexed(value) =>
       lines.push("pub const \{prefix}_MULTIPLEX_VALUE : Int = \{value}")
+    MultiplexedRanges(_, ranges) =>
+      for range_index, range in ranges {
+        lines.push(
+          "pub const \{prefix}_MULTIPLEX_RANGE_\{range_index}_START : Int = \{range.start}",
+        )
+        lines.push(
+          "pub const \{prefix}_MULTIPLEX_RANGE_\{range_index}_END : Int = \{range.end}",
+        )
+      }
   }
   lines.push("")
 }

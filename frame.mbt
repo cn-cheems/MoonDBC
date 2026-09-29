@@ -55,6 +55,26 @@ fn selector_matches(raw : RawValue, selector : Int) -> Bool {
 }
 
 ///|
+fn selector_in_ranges(raw : RawValue, ranges : Array[MultiplexRange]) -> Bool {
+  for range in ranges {
+    if range.start < 0 || range.end < range.start {
+      continue
+    }
+    let within = match raw {
+      UnsignedRaw(value) =>
+        value >= range.start.to_uint64() && value <= range.end.to_uint64()
+      SignedRaw(value) =>
+        value >= range.start.to_int64() && value <= range.end.to_int64()
+      FloatRaw(_) => false
+    }
+    if within {
+      return true
+    }
+  }
+  false
+}
+
+///|
 /// Decode every active signal in a CAN frame. Multiplexed signals are emitted
 /// only when their selector matches the decoded multiplexer value.
 pub fn Message::decode_frame(
@@ -70,6 +90,7 @@ pub fn Message::decode_frame(
     match signal.multiplex {
       Plain => ()
       Multiplexed(_) => has_multiplexed_signal = true
+      MultiplexedRanges(_, _) => has_multiplexed_signal = true
       Multiplexer =>
         match multiplexer {
           Some(_) => return Err(MultipleMultiplexers)
@@ -104,6 +125,15 @@ pub fn Message::decode_frame(
       Multiplexed(selector) =>
         match decoded_multiplexer {
           Some(decoded) if selector_matches(decoded.raw, selector) =>
+            match decode_signal(signal, payload) {
+              Ok(value) => signals.push(value)
+              Err(error) => return Err(error)
+            }
+          _ => ()
+        }
+      MultiplexedRanges(_, ranges) =>
+        match decoded_multiplexer {
+          Some(decoded) if selector_in_ranges(decoded.raw, ranges) =>
             match decode_signal(signal, payload) {
               Ok(value) => signals.push(value)
               Err(error) => return Err(error)

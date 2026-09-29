@@ -71,6 +71,15 @@ priv struct PendingSignalValueType {
 }
 
 ///|
+priv struct PendingMultiplexRanges {
+  line : Int
+  message_id : UInt
+  signal_name : String
+  selector_name : String
+  ranges : Array[MultiplexRange]
+}
+
+///|
 fn find_after(text : StringView, start : Int, needle : StringView) -> Int? {
   if start < 0 || start > text.length() {
     return None
@@ -203,6 +212,52 @@ fn parse_signal_value_type_line(
     _ => return Err("signal value type code must be 1 or 2")
   }
   Ok((message_id, header[1].to_owned(), value_type))
+}
+
+///|
+fn parse_multiplex_ranges_line(
+  line : StringView,
+) -> Result[(UInt, String, String, Array[MultiplexRange]), String] {
+  let body = line[11:].trim()
+  if !body.has_suffix(";") {
+    return Err("extended multiplex declaration is missing ';'")
+  }
+  let content = body[:body.length() - 1].trim()
+  let fields = words(content)
+  if fields.length() < 4 {
+    return Err(
+      "extended multiplex declaration requires an id, signal, selector and ranges",
+    )
+  }
+  let message_id = match parse_uint(fields[0]) {
+    Some(value) if dbc_message_id_parts(value) is Some(_) => value
+    _ => return Err("extended multiplex message id is invalid")
+  }
+  let range_parts : Array[String] = []
+  for index = 3; index < fields.length(); index = index + 1 {
+    range_parts.push(fields[index].to_owned())
+  }
+  let range_text = range_parts.join(" ")
+  let ranges : Array[MultiplexRange] = []
+  for item in range_text.view().split(",") {
+    let bounds : Array[StringView] = []
+    for part in item.trim().split("-") {
+      bounds.push(part)
+    }
+    if bounds.length() != 2 {
+      return Err("extended multiplex range must be start-end")
+    }
+    let start = match parse_int(bounds[0].trim()) {
+      Some(value) if value >= 0 => value
+      _ => return Err("extended multiplex range start is invalid")
+    }
+    let end = match parse_int(bounds[1].trim()) {
+      Some(value) if value >= start => value
+      _ => return Err("extended multiplex range end is invalid")
+    }
+    ranges.push({ start, end, })
+  }
+  Ok((message_id, fields[1].to_owned(), fields[2].to_owned(), ranges))
 }
 
 ///|
@@ -664,6 +719,8 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let resolved_transmitter_messages : Array[UInt] = []
   let pending_signal_value_types : Array[PendingSignalValueType] = []
   let resolved_signal_value_types : Array[(UInt, String)] = []
+  let pending_multiplex_ranges : Array[PendingMultiplexRanges] = []
+  let resolved_multiplex_ranges : Array[(UInt, String)] = []
   let diagnostics : Array[Diagnostic] = []
   let mut version : String? = None
   let mut current_message : Int? = None
@@ -728,6 +785,19 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
           })
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC020", message)
+      }
+    } else if line.has_prefix("SG_MUL_VAL_ ") {
+      match parse_multiplex_ranges_line(line) {
+        Ok((message_id, signal_name, selector_name, ranges)) =>
+          pending_multiplex_ranges.push({
+            line: line_number,
+            message_id,
+            signal_name,
+            selector_name,
+            ranges,
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC024", message)
       }
     } else if line.has_prefix("BO_ ") {
       match parse_message_line(line) {
@@ -998,6 +1068,81 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
               resolved_signal_value_types.push(
                 (pending.message_id, pending.signal_name),
               )
+            }
+        }
+      }
+    }
+  }
+  for pending in pending_multiplex_ranges {
+    match find_message_index(messages, pending.message_id) {
+      None =>
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC025",
+          "extended multiplex declaration refers to an unknown message",
+        )
+      Some(message_index) => {
+        let message = messages[message_index]
+        match find_signal_index(message, pending.signal_name) {
+          None =>
+            add_diagnostic(
+              diagnostics,
+              pending.line,
+              "DBC026",
+              "extended multiplex declaration refers to an unknown signal",
+            )
+          Some(signal_index) =>
+            if contains_signal_reference(
+                resolved_multiplex_ranges,
+                pending.message_id,
+                pending.signal_name,
+              ) {
+              add_diagnostic(
+                diagnostics,
+                pending.line,
+                "DBC027",
+                "duplicate extended multiplex declaration for the same signal",
+              )
+            } else {
+              match find_signal_index(message, pending.selector_name) {
+                None =>
+                  add_diagnostic(
+                    diagnostics,
+                    pending.line,
+                    "DBC028",
+                    "extended multiplex declaration refers to an unknown selector",
+                  )
+                Some(selector_index) =>
+                  if message.signals[selector_index].multiplex != Multiplexer {
+                    add_diagnostic(
+                      diagnostics,
+                      pending.line,
+                      "DBC029",
+                      "extended multiplex selector is not a multiplexer",
+                    )
+                  } else if message.signals[signal_index].multiplex
+                    is Multiplexer {
+                    add_diagnostic(
+                      diagnostics,
+                      pending.line,
+                      "DBC030",
+                      "extended multiplex signal cannot be a multiplexer",
+                    )
+                  } else {
+                    let signal = message.signals[signal_index]
+                    message.signals[signal_index] = {
+                      ..signal,
+                      multiplex: MultiplexedRanges(
+                        pending.selector_name,
+                        pending.ranges,
+                      ),
+                    }
+                    resolved_multiplex_ranges.push(
+                      (pending.message_id, pending.signal_name),
+                    )
+                  }
+              }
             }
         }
       }

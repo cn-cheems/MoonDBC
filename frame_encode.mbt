@@ -15,6 +15,7 @@ pub(all) enum FrameEncodeError {
   FrameEncodeDuplicateSignal(String)
   FrameEncodeMissingSignal(String)
   FrameEncodeInactiveSignal(String, Int)
+  FrameEncodeInactiveRangeSignal(String)
   FrameEncodeMissingMultiplexer
   FrameEncodeMultipleMultiplexers
   FrameSignalEncodeFailed(String, EncodeError)
@@ -62,6 +63,7 @@ fn encode_multiplexer_layout(
     match signal.multiplex {
       Plain => ()
       Multiplexed(_) => has_multiplexed_signal = true
+      MultiplexedRanges(_, _) => has_multiplexed_signal = true
       Multiplexer =>
         match multiplexer {
           None => multiplexer = Some(signal)
@@ -165,6 +167,24 @@ pub fn Message::encode_frame(
           (true, None) => return Err(FrameEncodeMissingSignal(signal.name))
           (false, Some(_)) =>
             return Err(FrameEncodeInactiveSignal(signal.name, expected))
+          (false, None) => ()
+        }
+      }
+      MultiplexedRanges(_, ranges) => {
+        let active = match selector {
+          Some(raw) => selector_in_ranges(raw, ranges)
+          None => false
+        }
+        match (active, find_assignment(assignments, signal.name)) {
+          (true, Some(assignment)) =>
+            payload = match
+              encode_assigned_signal(signal, assignment, payload) {
+              Err(error) => return Err(error)
+              Ok(value) => value
+            }
+          (true, None) => return Err(FrameEncodeMissingSignal(signal.name))
+          (false, Some(_)) =>
+            return Err(FrameEncodeInactiveRangeSignal(signal.name))
           (false, None) => ()
         }
       }

@@ -199,6 +199,10 @@ fn validation_issue_source(
     MissingMultiplexerIssue(id, name) => source_map.find_signal(id, name)
     MultiplexSelectorOutOfRangeIssue(id, name, _) =>
       source_map.find_signal(id, name)
+    InvalidMultiplexRangeIssue(id, name, _, _) =>
+      source_map.find_signal(id, name)
+    UnknownMultiplexSelectorIssue(id, name, _) =>
+      source_map.find_signal(id, name)
     OverlappingSignalsIssue(id, _, right) => source_map.find_signal(id, right)
     DuplicateCommentIssue(target) => source_map.find_comment(target)
     UnknownCommentNodeIssue(node) => source_map.find_comment(NodeComment(node))

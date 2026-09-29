@@ -109,7 +109,8 @@ test "reject declarations that would otherwise vanish from the parsed model" {
   assert_eq(parsed.diagnostics.length(), 3)
   assert_eq(parsed.diagnostics[0].line, 6)
   assert_eq(parsed.diagnostics[0].code, "DBC019")
-  assert_eq(parsed.diagnostics[1].line, 7)
+  assert_eq(parsed.diagnostics[1].line, 8)
   assert_eq(parsed.diagnostics[1].code, "DBC019")
-  assert_eq(parsed.diagnostics[2].line, 8)
+  assert_eq(parsed.diagnostics[2].line, 7)
+  assert_eq(parsed.diagnostics[2].code, "DBC028")
 }

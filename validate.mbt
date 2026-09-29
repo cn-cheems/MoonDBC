@@ -13,6 +13,8 @@ pub(all) enum ValidationIssue {
   MultipleMultiplexersIssue(UInt)
   MissingMultiplexerIssue(UInt, String)
   MultiplexSelectorOutOfRangeIssue(UInt, String, Int)
+  InvalidMultiplexRangeIssue(UInt, String, Int, Int)
+  UnknownMultiplexSelectorIssue(UInt, String, String)
   OverlappingSignalsIssue(UInt, String, String)
   DuplicateCommentIssue(DbcCommentTarget)
   UnknownCommentNodeIssue(String)
@@ -62,8 +64,49 @@ fn signals_can_coexist(left : MultiplexRole, right : MultiplexRole) -> Bool {
   match (left, right) {
     (Multiplexed(left_selector), Multiplexed(right_selector)) =>
       left_selector == right_selector
+    (Multiplexed(selector), MultiplexedRanges(_, ranges)) =>
+      selector_in_range_definitions(selector, ranges)
+    (MultiplexedRanges(_, ranges), Multiplexed(selector)) =>
+      selector_in_range_definitions(selector, ranges)
+    (
+      MultiplexedRanges(left_name, left_ranges),
+      MultiplexedRanges(right_name, right_ranges),
+    ) =>
+      if left_name != right_name {
+        true
+      } else {
+        ranges_intersect(left_ranges, right_ranges)
+      }
     _ => true
   }
+}
+
+///|
+fn selector_in_range_definitions(
+  selector : Int,
+  ranges : Array[MultiplexRange],
+) -> Bool {
+  for range in ranges {
+    if selector >= range.start && selector <= range.end {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn ranges_intersect(
+  left : Array[MultiplexRange],
+  right : Array[MultiplexRange],
+) -> Bool {
+  for a in left {
+    for b in right {
+      if a.start <= b.end && b.start <= a.end {
+        return true
+      }
+    }
+  }
+  false
 }
 
 ///|
@@ -229,6 +272,47 @@ fn validate_message(message : Message, issues : Array[ValidationIssue]) -> Unit 
                 ),
               )
             }
+        }
+      MultiplexedRanges(selector_name, ranges) =>
+        match multiplexer {
+          None => issues.push(MissingMultiplexerIssue(message.id, signal.name))
+          Some(mux) => {
+            if mux.name != selector_name {
+              issues.push(
+                UnknownMultiplexSelectorIssue(
+                  message.id,
+                  signal.name,
+                  selector_name,
+                ),
+              )
+            }
+            if ranges.is_empty() {
+              issues.push(
+                InvalidMultiplexRangeIssue(message.id, signal.name, -1, -1),
+              )
+            }
+            for range in ranges {
+              if range.start < 0 || range.end < range.start {
+                issues.push(
+                  InvalidMultiplexRangeIssue(
+                    message.id,
+                    signal.name,
+                    range.start,
+                    range.end,
+                  ),
+                )
+              } else if multiplexer_count == 1 &&
+                !multiplex_selector_fits(mux, range.end) {
+                issues.push(
+                  MultiplexSelectorOutOfRangeIssue(
+                    message.id,
+                    signal.name,
+                    range.end,
+                  ),
+                )
+              }
+            }
+          }
         }
       _ => ()
     }

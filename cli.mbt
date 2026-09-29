@@ -77,6 +77,10 @@ pub fn ValidationIssue::description(self : ValidationIssue) -> String {
       "signal \{signal} in message \{cli_dbc_id_text(id)} has no multiplexer"
     MultiplexSelectorOutOfRangeIssue(id, signal, selector) =>
       "signal \{signal} in message \{cli_dbc_id_text(id)} has out-of-range selector \{selector}"
+    InvalidMultiplexRangeIssue(id, signal, start, end) =>
+      "signal \{signal} in message \{cli_dbc_id_text(id)} has invalid multiplex range \{start}-\{end}"
+    UnknownMultiplexSelectorIssue(id, signal, selector) =>
+      "signal \{signal} in message \{cli_dbc_id_text(id)} refers to unknown multiplexer \{selector}"
     OverlappingSignalsIssue(id, left, right) =>
       "signals \{left} and \{right} overlap in message \{cli_dbc_id_text(id)}"
     DuplicateCommentIssue(_) => "a DBC target has more than one comment"
@@ -227,6 +231,8 @@ fn cli_frame_encode_error(error : FrameEncodeError) -> String {
     FrameEncodeMissingSignal(signal) => "signal \{signal} is not assigned"
     FrameEncodeInactiveSignal(signal, selector) =>
       "signal \{signal} is inactive for multiplex selector \{selector}"
+    FrameEncodeInactiveRangeSignal(signal) =>
+      "signal \{signal} is inactive for the selected multiplex range"
     FrameEncodeMissingMultiplexer =>
       "message has multiplexed signals but no multiplexer"
     FrameEncodeMultipleMultiplexers => "message has more than one multiplexer"
@@ -250,6 +256,8 @@ fn cli_write_error(error : DbcWriteError) -> String {
       "signal \{signal} in message \{cli_dbc_id_text(id)} has a non-finite \{field}"
     DbcWriteNegativeMultiplexValue(id, signal, value) =>
       "signal \{signal} in message \{cli_dbc_id_text(id)} has negative multiplex value \{value}"
+    DbcWriteInvalidMultiplexRange(id, signal, start, end) =>
+      "signal \{signal} in message \{cli_dbc_id_text(id)} has invalid multiplex range \{start}-\{end}"
     DbcWriteEmptyValueTable(id, signal) =>
       "signal \{signal} in message \{cli_dbc_id_text(id)} has an empty value table"
     DbcWriteDuplicateTransmitter(id, transmitter) =>
@@ -350,6 +358,13 @@ fn cli_multiplex(role : MultiplexRole) -> String {
     Plain => "plain"
     Multiplexer => "multiplexer"
     Multiplexed(value) => "multiplexed(\{value})"
+    MultiplexedRanges(selector, ranges) => {
+      let parts : Array[String] = []
+      for range in ranges {
+        parts.push("\{range.start}-\{range.end}")
+      }
+      "multiplexed(\{selector}: \{parts.join(",")})"
+    }
   }
 }
 
@@ -591,6 +606,7 @@ fn cli_format_line_is_supported(line : StringView) -> Bool {
   line.has_prefix("BU_:") ||
   line.has_prefix("BO_TX_BU_ ") ||
   line.has_prefix("SIG_VALTYPE_ ") ||
+  line.has_prefix("SG_MUL_VAL_ ") ||
   line.has_prefix("BO_ ") ||
   line.has_prefix("SG_ ") ||
   line.has_prefix("CM_ ") ||

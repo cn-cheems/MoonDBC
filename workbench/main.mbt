@@ -161,6 +161,13 @@ fn multiplex_label(role : @moondbc.MultiplexRole) -> String {
     @moondbc.Plain => "plain"
     @moondbc.Multiplexer => "selector"
     @moondbc.Multiplexed(value) => "mux \{value}"
+    @moondbc.MultiplexedRanges(selector, ranges) => {
+      let parts : Array[String] = []
+      for range in ranges {
+        parts.push("\{range.start}-\{range.end}")
+      }
+      "mux \{selector}: \{parts.join(", ")}"
+    }
   }
 }
 

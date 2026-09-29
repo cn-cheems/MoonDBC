@@ -132,6 +132,12 @@ pub extend MultiplexRole with Eq::{not_equal, equal}
 pub extend MultiplexRole with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+pub extend MultiplexRange with Eq::{not_equal, equal}
+
+///|
+pub extend MultiplexRange with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub extend Signal with Eq::{not_equal, equal}
 
 ///|

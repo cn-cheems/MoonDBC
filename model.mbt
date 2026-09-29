@@ -24,6 +24,14 @@ pub(all) enum MultiplexRole {
   Plain
   Multiplexer
   Multiplexed(Int)
+  MultiplexedRanges(String, Array[MultiplexRange])
+} derive(Eq, Debug)
+
+///|
+/// Inclusive selector interval in an `SG_MUL_VAL_` declaration.
+pub(all) struct MultiplexRange {
+  start : Int
+  end : Int
 } derive(Eq, Debug)
 
 ///|

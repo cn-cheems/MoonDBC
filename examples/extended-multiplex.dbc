@@ -1,0 +1,11 @@
+VERSION "1.0"
+
+BU_: ECU Logger
+
+BO_ 700 Sensor: 2 ECU
+ SG_ Mode M : 0|8@1+ (1,0) [0|9] "" Logger
+ SG_ First m1 : 8|8@1+ (1,0) [0|255] "" Logger
+ SG_ Second m4 : 8|8@1+ (1,0) [0|255] "" Logger
+
+SG_MUL_VAL_ 700 First Mode 1-3, 7-9;
+SG_MUL_VAL_ 700 Second Mode 4-6;

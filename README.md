@@ -2,7 +2,7 @@
 
 MoonDBC is a DBC parser and CAN signal codec toolkit written in MoonBit. It is intended for automotive gateways, battery-management systems, robotics, test benches, and browser-based diagnostic tools that need to turn raw CAN frames into named engineering values.
 
-The current milestone provides a portable DBC data model, parsing for messages, signals, comments and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SIG_VALTYPE_`, `CM_`, and `VAL_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, multiplexing markers, documentation comments, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; attribute and extended-multiplexing semantics are not yet implemented.
+The current milestone provides a portable DBC data model, parsing for messages, signals, comments and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SG_MUL_VAL_`, `SIG_VALTYPE_`, `CM_`, and `VAL_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, basic and range-based single-selector multiplexing, documentation comments, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; attributes and nested/multiple-selector multiplexing are not implemented.
 
 ## Quick start
 
@@ -111,6 +111,14 @@ All CLI commands that validate a DBC include source line and column for
 locatable semantic errors, so malformed layouts can be found directly from CI
 output.
 
+The [extended multiplexing example](examples/extended-multiplex.dbc) uses
+`SG_MUL_VAL_` to activate the same signal in multiple selector ranges. Those
+ranges are used consistently by frame encoding, decoding, overlap validation,
+layout analysis, deterministic DBC writing, and generated metadata. This
+milestone supports one multiplexer per message; nested or independent selector
+trees require a different model and are not claimed as supported.
+Selector values in the current public model are nonnegative 32-bit `Int` values.
+
 `generate-codecs` emits named MoonBit encode and decode functions for each
 signal. The destination package must import `cn-cheems/moondbc` as `@moondbc`.
 The functions do not parse DBC text at runtime and operate on individual
@@ -132,6 +140,7 @@ compiled and tested on the supported targets.
 - raw and physical signal encoding without mutating the input payload;
 - type, width, frame, scale, and physical range validation;
 - message-level frame decoding with multiplex selector dispatch;
+- inclusive, discontiguous `SG_MUL_VAL_` selector ranges with deferred reference resolution;
 - message-level frame encoding from strict named signal assignments;
 - automatic enrichment of decoded values with `VAL_` labels;
 - semantic validation for frame bounds, overlaps, scaling, and multiplexing;

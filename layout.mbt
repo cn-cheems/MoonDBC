@@ -52,11 +52,7 @@ fn layout_roles_can_coexist(
   left : MultiplexRole,
   right : MultiplexRole,
 ) -> Bool {
-  match (left, right) {
-    (Multiplexed(left_selector), Multiplexed(right_selector)) =>
-      left_selector == right_selector
-    _ => true
-  }
+  signals_can_coexist(left, right)
 }
 
 ///|
