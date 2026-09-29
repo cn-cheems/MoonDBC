@@ -2,7 +2,7 @@
 
 MoonDBC is a DBC parser and CAN signal codec toolkit written in MoonBit. It is intended for automotive gateways, battery-management systems, robotics, test benches, and browser-based diagnostic tools that need to turn raw CAN frames into named engineering values.
 
-The current milestone provides a portable DBC data model, parsing for messages, signals, comments and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SG_MUL_VAL_`, `SIG_VALTYPE_`, `CM_`, and `VAL_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, basic and range-based single-selector multiplexing, documentation comments, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; attributes and nested/multiple-selector multiplexing are not implemented.
+The current milestone provides a portable DBC data model, parsing for messages, signals, comments, attributes and value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SG_MUL_VAL_`, `SIG_VALTYPE_`, `CM_`, `BA_DEF_`, `BA_DEF_DEF_`, `BA_`, and `VAL_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, basic and range-based single-selector multiplexing, documentation comments, scoped attributes, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; relationship attributes and nested/multiple-selector multiplexing are not implemented.
 
 ## Quick start
 
@@ -119,6 +119,15 @@ milestone supports one multiplexer per message; nested or independent selector
 trees require a different model and are not claimed as supported.
 Selector values in the current public model are nonnegative 32-bit `Int` values.
 
+Attribute definitions, defaults, and explicit assignments are retained in
+`Database.attributes`. `Database::attribute_value` resolves an explicit value
+or the definition's default for an existing database, node, message, or signal
+target. Supported attribute types are `INT`, `HEX`, `FLOAT`, `STRING`, and
+`ENUM`. The strict parser rejects unknown references, scope mismatches, and
+unsupported attribute syntax instead of dropping metadata. The
+[pinned opendbc fixtures](fixtures/opendbc/README.md) exercise these paths
+against real vehicle DBC files; the upstream MIT notice is included there.
+
 `generate-codecs` emits named MoonBit encode and decode functions for each
 signal. The destination package must import `cn-cheems/moondbc` as `@moondbc`.
 The functions do not parse DBC text at runtime and operate on individual
@@ -132,6 +141,7 @@ compiled and tested on the supported targets.
 - parsing of core message and signal declarations;
 - deferred resolution of `VAL_` value descriptions and label lookup;
 - database, node, message, and signal `CM_` comments with reference validation;
+- scoped DBC attribute definitions, defaults, assignments, lookup, and deterministic export;
 - multi-transmitter messages through deferred `BO_TX_BU_` resolution;
 - bit-31 DBC extended-frame identifiers with collision-safe SocketCAN lookup;
 - bit-accurate Intel and Motorola signal extraction across byte boundaries;
@@ -159,7 +169,7 @@ compiled and tested on the supported targets.
 
 ## Project origin
 
-MoonDBC is an original MoonBit implementation of the DBC data model and commonly documented text syntax. It does not copy source code from an existing DBC library. Any third-party compatibility fixtures added later will be recorded with their source and license.
+MoonDBC is an original MoonBit implementation of the DBC data model and commonly documented text syntax. It does not copy source code from an existing DBC library. The third-party DBC fixtures are credited with their source and license in their own directory.
 
 ## License
 

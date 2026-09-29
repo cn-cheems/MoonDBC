@@ -80,6 +80,21 @@ priv struct PendingMultiplexRanges {
 }
 
 ///|
+priv struct PendingAttributeDefault {
+  line : Int
+  name : String
+  raw_value : String
+}
+
+///|
+priv struct PendingAttributeAssignment {
+  line : Int
+  name : String
+  target : DbcAttributeTarget
+  raw_value : String
+}
+
+///|
 fn find_after(text : StringView, start : Int, needle : StringView) -> Int? {
   if start < 0 || start > text.length() {
     return None
@@ -721,6 +736,9 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let resolved_signal_value_types : Array[(UInt, String)] = []
   let pending_multiplex_ranges : Array[PendingMultiplexRanges] = []
   let resolved_multiplex_ranges : Array[(UInt, String)] = []
+  let attributes = DbcAttributes::empty()
+  let pending_attribute_defaults : Array[PendingAttributeDefault] = []
+  let pending_attribute_assignments : Array[PendingAttributeAssignment] = []
   let diagnostics : Array[Diagnostic] = []
   let mut version : String? = None
   let mut current_message : Int? = None
@@ -740,7 +758,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
     // NS_ lists declaration names, not declarations. Never discard their
     // actual occurrences elsewhere in the document.
     if in_namespace &&
-      line.has_suffix("_") &&
+      (line.has_suffix("_") || line == "FILTER") &&
       !line.contains(" ") &&
       !line.contains("\t") {
       continue
@@ -798,6 +816,43 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
           })
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC024", message)
+      }
+    } else if line.has_prefix("BA_DEF_DEF_ ") {
+      match parse_attribute_default_line(line) {
+        Ok((name, raw_value)) =>
+          pending_attribute_defaults.push({
+            line: line_number,
+            name,
+            raw_value,
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC033", message)
+      }
+    } else if line.has_prefix("BA_DEF_ ") {
+      match parse_attribute_definition_line(line) {
+        Ok(definition) =>
+          if find_attribute_definition(attributes.definitions, definition.name)
+            is Some(_) {
+            add_diagnostic(
+              diagnostics, line_number, "DBC032", "duplicate attribute definition",
+            )
+          } else {
+            attributes.definitions.push(definition)
+          }
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC031", message)
+      }
+    } else if line.has_prefix("BA_ ") {
+      match parse_attribute_assignment_line(line) {
+        Ok((name, target, raw_value)) =>
+          pending_attribute_assignments.push({
+            line: line_number,
+            name,
+            target,
+            raw_value,
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC037", message)
       }
     } else if line.has_prefix("BO_ ") {
       match parse_message_line(line) {
@@ -1148,8 +1203,105 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
       }
     }
   }
+  for pending in pending_attribute_defaults {
+    match find_attribute_definition(attributes.definitions, pending.name) {
+      None =>
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC034",
+          "attribute default refers to an unknown definition",
+        )
+      Some(definition) => {
+        let mut duplicate = false
+        for existing in attributes.defaults {
+          if existing.name == pending.name {
+            duplicate = true
+          }
+        }
+        if duplicate {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC035",
+            "duplicate attribute default",
+          )
+        } else {
+          match
+            attribute_value_from_text(pending.raw_value, definition.value_type) {
+            Ok(value) =>
+              attributes.defaults.push({ name: pending.name, value, })
+            Err(message) =>
+              add_diagnostic(diagnostics, pending.line, "DBC036", message)
+          }
+        }
+      }
+    }
+  }
+  for pending in pending_attribute_assignments {
+    match find_attribute_definition(attributes.definitions, pending.name) {
+      None =>
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC038",
+          "attribute assignment refers to an unknown definition",
+        )
+      Some(definition) => {
+        if definition.scope != attribute_target_scope(pending.target) {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC039",
+            "attribute assignment has the wrong target scope",
+          )
+          continue
+        }
+        let target_exists = attribute_target_exists(
+          nodes,
+          messages,
+          pending.target,
+        )
+        if !target_exists {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC040",
+            "attribute assignment refers to an unknown target",
+          )
+          continue
+        }
+        let mut duplicate = false
+        for existing in attributes.assignments {
+          if existing.name == pending.name && existing.target == pending.target {
+            duplicate = true
+          }
+        }
+        if duplicate {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC041",
+            "duplicate attribute assignment",
+          )
+        } else {
+          match
+            attribute_value_from_text(pending.raw_value, definition.value_type) {
+            Ok(value) =>
+              attributes.assignments.push({
+                name: pending.name,
+                target: pending.target,
+                value,
+              })
+            Err(message) =>
+              add_diagnostic(diagnostics, pending.line, "DBC042", message)
+          }
+        }
+      }
+    }
+  }
   {
-    database: { version, nodes, messages, value_tables, comments, },
+    database: { version, nodes, messages, value_tables, comments, attributes, },
     diagnostics,
     source_map: {
       messages: message_locations,

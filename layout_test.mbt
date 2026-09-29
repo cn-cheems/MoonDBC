@@ -145,6 +145,7 @@ test "report invalid manually constructed layout metadata" {
     ],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(database.analyze_frame_layout(105U).unwrap().issues, [
     @moondbc.LayoutInvalidSignal("Broken", -1, 0, None),

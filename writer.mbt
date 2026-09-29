@@ -9,6 +9,7 @@ pub(all) enum DbcWriteError {
   DbcWriteEmptyValueTable(UInt, String)
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
+  DbcWriteInvalidAttribute(String)
 } derive(Eq, Debug)
 
 ///|
@@ -403,6 +404,9 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   let has_transmitter_section = has_additional_transmitters(self.messages)
   let has_value_type_section = has_signal_value_types(self.messages)
   let has_extended_multiplex_section = has_extended_multiplexing(self.messages)
+  let has_attribute_section = !self.attributes.definitions.is_empty() ||
+    !self.attributes.defaults.is_empty() ||
+    !self.attributes.assignments.is_empty()
   match self.version {
     Some(version) => {
       match check_dbc_quoted_text("database version", version) {
@@ -427,6 +431,7 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   }
   if !self.messages.is_empty() ||
     !self.comments.is_empty() ||
+    has_attribute_section ||
     !self.value_tables.is_empty() {
     lines.push("")
   }
@@ -438,6 +443,7 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
     if index + 1 < self.messages.length() ||
       has_value_type_section ||
       has_extended_multiplex_section ||
+      has_attribute_section ||
       has_transmitter_section ||
       !self.comments.is_empty() ||
       !self.value_tables.is_empty() {
@@ -450,6 +456,7 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   if has_value_type_section &&
     (
       has_extended_multiplex_section ||
+      has_attribute_section ||
       has_transmitter_section ||
       !self.comments.is_empty() ||
       !self.value_tables.is_empty()
@@ -465,6 +472,7 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   if has_extended_multiplex_section &&
     (
       has_transmitter_section ||
+      has_attribute_section ||
       !self.comments.is_empty() ||
       !self.value_tables.is_empty()
     ) {
@@ -478,7 +486,11 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
     }
   }
   if has_transmitter_section &&
-    (!self.comments.is_empty() || !self.value_tables.is_empty()) {
+    (
+      has_attribute_section ||
+      !self.comments.is_empty() ||
+      !self.value_tables.is_empty()
+    ) {
     lines.push("")
   }
   for comment in self.comments {
@@ -487,7 +499,15 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       Ok(line) => lines.push(line)
     }
   }
-  if !self.comments.is_empty() && !self.value_tables.is_empty() {
+  if !self.comments.is_empty() &&
+    (has_attribute_section || !self.value_tables.is_empty()) {
+    lines.push("")
+  }
+  match write_attributes(lines, self.attributes) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  if has_attribute_section && !self.value_tables.is_empty() {
     lines.push("")
   }
   for index, table in self.value_tables {

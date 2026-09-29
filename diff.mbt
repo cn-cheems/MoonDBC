@@ -22,6 +22,7 @@ pub(all) enum DatabaseChange {
   ValueTableAddedChange(ValueTable)
   ValueTableRemovedChange(ValueTable)
   ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
+  AttributesChangedChange(DbcAttributes, DbcAttributes)
 } derive(Eq, Debug)
 
 ///|
@@ -159,5 +160,8 @@ pub fn Database::diff(
     }
   }
   diff_value_tables(self, newer, changes)
+  if self.attributes != newer.attributes {
+    changes.push(AttributesChangedChange(self.attributes, newer.attributes))
+  }
   changes
 }

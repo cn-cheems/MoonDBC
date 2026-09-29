@@ -110,6 +110,7 @@ test "reject invalid DBC and CAN identifier ranges" {
     messages: [message],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(database.validate(), [@moondbc.InvalidMessageIdentifierIssue(2048U)])
   assert_eq(

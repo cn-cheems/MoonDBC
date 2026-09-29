@@ -90,12 +90,77 @@ pub(all) struct DbcComment {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum DbcAttributeScope {
+  DatabaseAttributeScope
+  NodeAttributeScope
+  MessageAttributeScope
+  SignalAttributeScope
+} derive(Eq, Debug)
+
+///|
+pub(all) enum DbcAttributeType {
+  AttributeIntegerType(Int64, Int64)
+  AttributeHexType(Int64, Int64)
+  AttributeFloatType(Double, Double)
+  AttributeStringType
+  AttributeEnumType(Array[String])
+} derive(Eq, Debug)
+
+///|
+pub(all) enum DbcAttributeValue {
+  AttributeInteger(Int64)
+  AttributeFloat(Double)
+  AttributeText(String)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum DbcAttributeTarget {
+  DatabaseAttributeTarget
+  NodeAttributeTarget(String)
+  MessageAttributeTarget(UInt)
+  SignalAttributeTarget(UInt, String)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct DbcAttributeDefinition {
+  name : String
+  scope : DbcAttributeScope
+  value_type : DbcAttributeType
+} derive(Eq, Debug)
+
+///|
+pub(all) struct DbcAttributeDefault {
+  name : String
+  value : DbcAttributeValue
+} derive(Eq, Debug)
+
+///|
+pub(all) struct DbcAttributeAssignment {
+  name : String
+  target : DbcAttributeTarget
+  value : DbcAttributeValue
+} derive(Eq, Debug)
+
+///|
+pub(all) struct DbcAttributes {
+  definitions : Array[DbcAttributeDefinition]
+  defaults : Array[DbcAttributeDefault]
+  assignments : Array[DbcAttributeAssignment]
+} derive(Eq, Debug)
+
+///|
+pub fn DbcAttributes::empty() -> DbcAttributes {
+  { definitions: [], defaults: [], assignments: [], }
+}
+
+///|
 pub(all) struct Database {
   version : String?
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
   comments : Array[DbcComment]
+  attributes : DbcAttributes
 } derive(Eq, Debug)
 
 ///|

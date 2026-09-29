@@ -83,6 +83,7 @@ test "accept DBC namespace declarations without treating symbols as data" {
     #|NS_ :
     #| BA_DEF_
     #| SG_MUL_VAL_
+    #| FILTER
     #|
     #|BS_:
     #|BU_: ECU
@@ -101,7 +102,7 @@ test "reject declarations that would otherwise vanish from the parsed model" {
     #|
     #|BO_ 256 Status: 1 ECU
     #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
-    #|BA_ "GenMsgCycleTime" BO_ 256 100;
+    #|BA_DEF_REL_ "GenMsgCycleTime" INT 0 1000;
     #|SG_MUL_VAL_ 256 State Mode 1-2;
     #|BS_: 500000:0,0
   let parsed = @moondbc.parse(source)

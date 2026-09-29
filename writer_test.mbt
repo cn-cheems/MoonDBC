@@ -42,6 +42,7 @@ test "write an empty database with an explicit node declaration" {
     messages: [],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(database.to_dbc(), Ok("BU_:"))
   let reparsed = @moondbc.parse(database.to_dbc().unwrap())
@@ -57,6 +58,7 @@ test "reject tokens and quoted text that cannot round trip" {
     messages: [],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     invalid_node.to_dbc(),
@@ -68,6 +70,7 @@ test "reject tokens and quoted text that cannot round trip" {
     messages: [],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     invalid_version.to_dbc(),
@@ -111,6 +114,7 @@ test "reject invalid message and signal values" {
     ],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     database.to_dbc(),
@@ -131,6 +135,7 @@ test "reject invalid message and signal values" {
     ],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     invalid_size.to_dbc(),
@@ -170,6 +175,7 @@ test "reject invalid multiplex values and empty value tables" {
     ],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     invalid_multiplex.to_dbc(),
@@ -181,6 +187,7 @@ test "reject invalid multiplex values and empty value tables" {
     messages: [],
     value_tables: [{ message_id: 905U, signal_name: "State", entries: [], }],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     empty_table.to_dbc(),

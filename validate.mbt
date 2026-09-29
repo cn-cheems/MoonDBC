@@ -21,6 +21,13 @@ pub(all) enum ValidationIssue {
   UnknownCommentMessageIssue(UInt)
   UnknownCommentSignalIssue(UInt, String)
   DuplicateMessageTransmitterIssue(UInt, String)
+  DuplicateAttributeDefinitionIssue(String)
+  DuplicateAttributeDefaultIssue(String)
+  DuplicateAttributeAssignmentIssue(String, DbcAttributeTarget)
+  UnknownAttributeDefinitionIssue(String)
+  InvalidAttributeTargetIssue(String, DbcAttributeTarget)
+  AttributeScopeMismatchIssue(String, DbcAttributeTarget)
+  InvalidAttributeValueIssue(String)
 } derive(Eq, Debug)
 
 ///|
@@ -382,10 +389,77 @@ fn validate_comments(
 }
 
 ///|
+fn validate_attributes(
+  database : Database,
+  issues : Array[ValidationIssue],
+) -> Unit {
+  let attributes = database.attributes
+  for index, definition in attributes.definitions {
+    for previous = 0; previous < index; previous = previous + 1 {
+      if attributes.definitions[previous].name == definition.name {
+        issues.push(DuplicateAttributeDefinitionIssue(definition.name))
+      }
+    }
+    if definition.name.is_empty() ||
+      attribute_type_text(definition.value_type) is Err(_) {
+      issues.push(InvalidAttributeValueIssue(definition.name))
+    }
+  }
+  for index, default in attributes.defaults {
+    for previous = 0; previous < index; previous = previous + 1 {
+      if attributes.defaults[previous].name == default.name {
+        issues.push(DuplicateAttributeDefaultIssue(default.name))
+      }
+    }
+    match find_attribute_definition(attributes.definitions, default.name) {
+      None => issues.push(UnknownAttributeDefinitionIssue(default.name))
+      Some(definition) =>
+        if attribute_value_text(default.value, definition.value_type) is Err(_) {
+          issues.push(InvalidAttributeValueIssue(default.name))
+        }
+    }
+  }
+  for index, assignment in attributes.assignments {
+    for previous = 0; previous < index; previous = previous + 1 {
+      if attributes.assignments[previous].name == assignment.name &&
+        attributes.assignments[previous].target == assignment.target {
+        issues.push(
+          DuplicateAttributeAssignmentIssue(assignment.name, assignment.target),
+        )
+      }
+    }
+    match find_attribute_definition(attributes.definitions, assignment.name) {
+      None => issues.push(UnknownAttributeDefinitionIssue(assignment.name))
+      Some(definition) => {
+        if definition.scope != attribute_target_scope(assignment.target) {
+          issues.push(
+            AttributeScopeMismatchIssue(assignment.name, assignment.target),
+          )
+        }
+        if !attribute_target_exists(
+            database.nodes,
+            database.messages,
+            assignment.target,
+          ) {
+          issues.push(
+            InvalidAttributeTargetIssue(assignment.name, assignment.target),
+          )
+        }
+        if attribute_value_text(assignment.value, definition.value_type)
+          is Err(_) {
+          issues.push(InvalidAttributeValueIssue(assignment.name))
+        }
+      }
+    }
+  }
+}
+
+///|
 /// Validate cross-field and bit-layout constraints that are not syntax errors.
 pub fn Database::validate(self : Database) -> Array[ValidationIssue] {
   let issues : Array[ValidationIssue] = []
   validate_comments(self, issues)
+  validate_attributes(self, issues)
   for index, message in self.messages {
     for previous = 0; previous < index; previous = previous + 1 {
       if self.messages[previous].id == message.id {

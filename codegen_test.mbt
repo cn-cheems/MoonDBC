@@ -125,6 +125,7 @@ test "generated identifiers are normalized and stable" {
     ],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   let generated = database.generate_moonbit_constants()
   assert_eq(
@@ -158,6 +159,7 @@ test "empty databases still generate a valid source header" {
     messages: [],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     database.generate_moonbit_constants(),

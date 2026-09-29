@@ -105,6 +105,7 @@ test "validate comment references in manually built databases" {
       { target: @moondbc.SignalComment(100U, "Missing"), text: "Unknown", },
       { target: @moondbc.SignalComment(999U, "Speed"), text: "Unknown", },
     ],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(database.validate(), [
     @moondbc.DuplicateCommentIssue(@moondbc.DatabaseComment),
@@ -123,6 +124,7 @@ test "reject multiline comments during DBC export" {
     messages: [],
     value_tables: [],
     comments: [{ target: @moondbc.DatabaseComment, text: "first\nsecond", }],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(
     database.to_dbc(),

@@ -65,6 +65,7 @@ test "validate and reject duplicate message transmitters" {
     messages: [message],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(database.validate(), [
     @moondbc.DuplicateMessageTransmitterIssue(101U, "ECU"),

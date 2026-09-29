@@ -52,7 +52,7 @@ test "check refuses unsupported declarations instead of reporting OK" {
     (
       #|BO_ 256 Status: 1 ECU
       #| SG_ State : 0|8@1+ (1,0) [0|255] "" ECU
-      #|BA_ "GenMsgCycleTime" BO_ 256 100;
+      #|BA_DEF_REL_ "GenMsgCycleTime" INT 0 1000;
     ),
   )
   assert_eq(output.stdout, "")
@@ -553,7 +553,7 @@ test "never discard unsupported declarations while formatting" {
     "attributes.dbc",
     (
       #|BU_: ECU
-      #|BA_DEF_ "BusType" STRING ;
+      #|BA_DEF_REL_ "BusType" STRING ;
     ),
     false,
   )

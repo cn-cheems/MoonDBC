@@ -138,6 +138,54 @@ pub extend MultiplexRange with Eq::{not_equal, equal}
 pub extend MultiplexRange with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+pub extend DbcAttributeScope with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributeScope with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcAttributeType with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributeType with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcAttributeValue with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributeValue with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcAttributeTarget with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributeTarget with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcAttributeDefinition with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributeDefinition with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcAttributeDefault with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributeDefault with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcAttributeAssignment with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributeAssignment with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DbcAttributes with Eq::{not_equal, equal}
+
+///|
+pub extend DbcAttributes with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub extend Signal with Eq::{not_equal, equal}
 
 ///|

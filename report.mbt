@@ -57,6 +57,7 @@ pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
     | SignalModifiedChange(_, _, _, _)
     | ValueTableRemovedChange(_)
     | ValueTableModifiedChange(_, _, _, _) => Breaking
+    AttributesChangedChange(_, _) => Breaking
   }
 }
 
@@ -103,6 +104,8 @@ pub fn DatabaseChange::summary(self : DatabaseChange) -> String {
       "Value table for \{table.signal_name} in message \{table.message_id} was removed."
     ValueTableModifiedChange(message_id, signal_name, _, _) =>
       "Value table for \{signal_name} in message \{message_id} was modified."
+    AttributesChangedChange(_, _) =>
+      "DBC attribute definitions, defaults, or assignments changed."
   }
 }
 

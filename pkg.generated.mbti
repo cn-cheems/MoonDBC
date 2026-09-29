@@ -149,8 +149,10 @@ pub(all) struct Database {
   messages : Array[Message]
   value_tables : Array[ValueTable]
   comments : Array[DbcComment]
+  attributes : DbcAttributes
 } derive(Eq, @debug.Debug)
 pub fn Database::analyze_frame_layout(Self, UInt) -> Result[FrameLayoutAnalysis, FrameLayoutError]
+pub fn Database::attribute_value(Self, StringView, DbcAttributeTarget) -> DbcAttributeValue?
 pub fn Database::can_message_comment(Self, UInt, Bool) -> String?
 pub fn Database::can_signal_comment(Self, UInt, Bool, StringView) -> String?
 pub fn Database::can_value_label(Self, UInt, Bool, StringView, Int64) -> String?
@@ -194,12 +196,89 @@ pub(all) enum DatabaseChange {
   ValueTableAddedChange(ValueTable)
   ValueTableRemovedChange(ValueTable)
   ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
+  AttributesChangedChange(DbcAttributes, DbcAttributes)
 } derive(Eq, @debug.Debug)
 pub fn DatabaseChange::equal(Self, Self) -> Bool
 pub fn DatabaseChange::impact(Self) -> ChangeImpact
 pub fn DatabaseChange::not_equal(Self, Self) -> Bool
 pub fn DatabaseChange::summary(Self) -> String
 pub fn DatabaseChange::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DbcAttributeAssignment {
+  name : String
+  target : DbcAttributeTarget
+  value : DbcAttributeValue
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributeAssignment::equal(Self, Self) -> Bool
+pub fn DbcAttributeAssignment::not_equal(Self, Self) -> Bool
+pub fn DbcAttributeAssignment::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DbcAttributeDefault {
+  name : String
+  value : DbcAttributeValue
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributeDefault::equal(Self, Self) -> Bool
+pub fn DbcAttributeDefault::not_equal(Self, Self) -> Bool
+pub fn DbcAttributeDefault::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DbcAttributeDefinition {
+  name : String
+  scope : DbcAttributeScope
+  value_type : DbcAttributeType
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributeDefinition::equal(Self, Self) -> Bool
+pub fn DbcAttributeDefinition::not_equal(Self, Self) -> Bool
+pub fn DbcAttributeDefinition::to_repr(Self) -> @debug.Repr
+
+pub(all) enum DbcAttributeScope {
+  DatabaseAttributeScope
+  NodeAttributeScope
+  MessageAttributeScope
+  SignalAttributeScope
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributeScope::equal(Self, Self) -> Bool
+pub fn DbcAttributeScope::not_equal(Self, Self) -> Bool
+pub fn DbcAttributeScope::to_repr(Self) -> @debug.Repr
+
+pub(all) enum DbcAttributeTarget {
+  DatabaseAttributeTarget
+  NodeAttributeTarget(String)
+  MessageAttributeTarget(UInt)
+  SignalAttributeTarget(UInt, String)
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributeTarget::equal(Self, Self) -> Bool
+pub fn DbcAttributeTarget::not_equal(Self, Self) -> Bool
+pub fn DbcAttributeTarget::to_repr(Self) -> @debug.Repr
+
+pub(all) enum DbcAttributeType {
+  AttributeIntegerType(Int64, Int64)
+  AttributeHexType(Int64, Int64)
+  AttributeFloatType(Double, Double)
+  AttributeStringType
+  AttributeEnumType(Array[String])
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributeType::equal(Self, Self) -> Bool
+pub fn DbcAttributeType::not_equal(Self, Self) -> Bool
+pub fn DbcAttributeType::to_repr(Self) -> @debug.Repr
+
+pub(all) enum DbcAttributeValue {
+  AttributeInteger(Int64)
+  AttributeFloat(Double)
+  AttributeText(String)
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributeValue::equal(Self, Self) -> Bool
+pub fn DbcAttributeValue::not_equal(Self, Self) -> Bool
+pub fn DbcAttributeValue::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DbcAttributes {
+  definitions : Array[DbcAttributeDefinition]
+  defaults : Array[DbcAttributeDefault]
+  assignments : Array[DbcAttributeAssignment]
+} derive(Eq, @debug.Debug)
+pub fn DbcAttributes::empty() -> Self
+pub fn DbcAttributes::equal(Self, Self) -> Bool
+pub fn DbcAttributes::not_equal(Self, Self) -> Bool
+pub fn DbcAttributes::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DbcComment {
   target : DbcCommentTarget
@@ -243,6 +322,7 @@ pub(all) enum DbcWriteError {
   DbcWriteEmptyValueTable(UInt, String)
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
+  DbcWriteInvalidAttribute(String)
 } derive(Eq, @debug.Debug)
 pub fn DbcWriteError::equal(Self, Self) -> Bool
 pub fn DbcWriteError::not_equal(Self, Self) -> Bool
@@ -619,6 +699,13 @@ pub(all) enum ValidationIssue {
   UnknownCommentMessageIssue(UInt)
   UnknownCommentSignalIssue(UInt, String)
   DuplicateMessageTransmitterIssue(UInt, String)
+  DuplicateAttributeDefinitionIssue(String)
+  DuplicateAttributeDefaultIssue(String)
+  DuplicateAttributeAssignmentIssue(String, DbcAttributeTarget)
+  UnknownAttributeDefinitionIssue(String)
+  InvalidAttributeTargetIssue(String, DbcAttributeTarget)
+  AttributeScopeMismatchIssue(String, DbcAttributeTarget)
+  InvalidAttributeValueIssue(String)
 } derive(Eq, @debug.Debug)
 pub fn ValidationIssue::description(Self) -> String
 pub fn ValidationIssue::equal(Self, Self) -> Bool

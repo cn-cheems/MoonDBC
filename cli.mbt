@@ -91,6 +91,20 @@ pub fn ValidationIssue::description(self : ValidationIssue) -> String {
       "comment refers to unknown signal \{signal} in message \{cli_dbc_id_text(id)}"
     DuplicateMessageTransmitterIssue(id, transmitter) =>
       "message \{cli_dbc_id_text(id)} repeats transmitter \{transmitter}"
+    DuplicateAttributeDefinitionIssue(name) =>
+      "attribute \{name} has multiple definitions"
+    DuplicateAttributeDefaultIssue(name) =>
+      "attribute \{name} has multiple defaults"
+    DuplicateAttributeAssignmentIssue(name, _) =>
+      "attribute \{name} is assigned more than once to the same target"
+    UnknownAttributeDefinitionIssue(name) =>
+      "attribute \{name} has no definition"
+    InvalidAttributeTargetIssue(name, _) =>
+      "attribute \{name} refers to an unknown target"
+    AttributeScopeMismatchIssue(name, _) =>
+      "attribute \{name} is assigned to the wrong target type"
+    InvalidAttributeValueIssue(name) =>
+      "attribute \{name} has an invalid value or type"
   }
 }
 
@@ -264,6 +278,7 @@ fn cli_write_error(error : DbcWriteError) -> String {
       "message \{cli_dbc_id_text(id)} repeats transmitter \{transmitter}"
     DbcWriteInvalidMessageIdentifier(id) =>
       "message \{id} has an invalid DBC identifier"
+    DbcWriteInvalidAttribute(message) => "invalid DBC attribute: \{message}"
   }
 }
 
@@ -607,6 +622,9 @@ fn cli_format_line_is_supported(line : StringView) -> Bool {
   line.has_prefix("BO_TX_BU_ ") ||
   line.has_prefix("SIG_VALTYPE_ ") ||
   line.has_prefix("SG_MUL_VAL_ ") ||
+  line.has_prefix("BA_DEF_DEF_ ") ||
+  line.has_prefix("BA_DEF_ ") ||
+  line.has_prefix("BA_ ") ||
   line.has_prefix("BO_ ") ||
   line.has_prefix("SG_ ") ||
   line.has_prefix("CM_ ") ||

@@ -131,7 +131,9 @@ fn change_source(
   change : DatabaseChange,
 ) -> SourceSpan? {
   match change {
-    VersionChangedChange(_, _) | NodesChangedChange(_, _) => None
+    VersionChangedChange(_, _)
+    | NodesChangedChange(_, _)
+    | AttributesChangedChange(_, _) => None
     CommentAddedChange(comment) | CommentRemovedChange(comment) =>
       source_map.find_comment(comment.target)
     CommentModifiedChange(target, _, _) => source_map.find_comment(target)
@@ -210,6 +212,13 @@ fn validation_issue_source(
       source_map.find_comment(MessageComment(id))
     UnknownCommentSignalIssue(id, name) =>
       source_map.find_comment(SignalComment(id, name))
+    DuplicateAttributeDefinitionIssue(_)
+    | DuplicateAttributeDefaultIssue(_)
+    | DuplicateAttributeAssignmentIssue(_, _)
+    | UnknownAttributeDefinitionIssue(_)
+    | InvalidAttributeTargetIssue(_, _)
+    | AttributeScopeMismatchIssue(_, _)
+    | InvalidAttributeValueIssue(_) => None
   }
 }
 

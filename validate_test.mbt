@@ -128,6 +128,7 @@ test "validate manually constructed signal metadata" {
     messages: [message],
     value_tables: [],
     comments: [],
+    attributes: @moondbc.DbcAttributes::empty(),
   }
   assert_eq(database.validate(), [
     @moondbc.InvalidSignalLayoutIssue(308U, "Broken", -1, 0),
