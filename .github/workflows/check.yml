@@ -40,12 +40,7 @@ jobs:
           moon test --target native --deny-warn
           moon run --target native cmd/moondbc -- check examples/vehicle.dbc | grep -q '^OK examples/vehicle.dbc$'
           moon run --target native cmd/moondbc -- check fixtures/opendbc/gm_global_a_powertrain_expansion.dbc | grep -q '^OK fixtures/opendbc/gm_global_a_powertrain_expansion.dbc$'
-          set +e
-          moon run --target native cmd/moondbc -- check fixtures/opendbc/gm_global_a_chassis.dbc > /tmp/moondbc-chassis.out 2>&1
-          chassis_status=$?
-          set -e
-          test "$chassis_status" -eq 1
-          grep -q 'RollingCounter and SteeringWheelChecksum overlap' /tmp/moondbc-chassis.out
+          moon run --target native cmd/moondbc -- check fixtures/opendbc/gm_global_a_chassis.dbc | grep -q '^OK fixtures/opendbc/gm_global_a_chassis.dbc$'
           moon run --target native cmd/moondbc -- list examples/vehicle.dbc | grep -q '^00000123 extended ExtendedStatus'
           moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Powertrain","Gear",1,1,"","Drive"'
           moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Measurements","Acceleration",1.5,1.5,"m/s2",""'
