@@ -46,3 +46,44 @@ test "workbench does not validate a partially parsed model" {
   assert_eq(parsed.diagnostics.length(), 1)
   assert_eq(workbench_validation_issues(parsed), [])
 }
+
+///|
+test "workbench preview decodes the sample frame and candump record" {
+  let parsed = @moondbc.parse_with_source_map(sample_dbc)
+  let decoded = decode_preview(parsed, sample_frame).unwrap()
+  assert_eq(decoded.name, "Powertrain")
+  assert_eq(decoded.signals.length(), 3)
+  assert_eq(decoded.signals[0].physical, 2000.0)
+  assert_eq(decoded.signals[1].physical, 85.0)
+  assert_eq(decoded.signals[2].physical, 1.0)
+  let candump = decode_preview(
+    parsed, "(1697042645.123456) can0 100#401F7D0100000000",
+  ).unwrap()
+  assert_eq(candump, decoded)
+}
+
+///|
+test "workbench preview reports malformed and unmatched frames" {
+  let parsed = @moondbc.parse_with_source_map(sample_dbc)
+  assert_eq(
+    decode_preview(parsed, ""),
+    Err("Enter a SocketCAN frame or candump record."),
+  )
+  assert_eq(
+    decode_preview(parsed, "bad frame"),
+    Err("Invalid CAN record. Use 100#401F7D0100000000 or a candump line."),
+  )
+  assert_eq(
+    decode_preview(parsed, "555#00"),
+    Err("No DBC message matches standard CAN ID 1365."),
+  )
+  assert_eq(
+    decode_preview(parsed, "100#00"),
+    Err("Frame has 1 byte; the DBC message requires 8."),
+  )
+  let invalid = @moondbc.parse_with_source_map("BO_ invalid")
+  assert_eq(
+    decode_preview(invalid, sample_frame),
+    Err("Fix DBC issues before decoding a frame."),
+  )
+}

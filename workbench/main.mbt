@@ -49,8 +49,12 @@ let sample_dbc =
   #|
 
 ///|
+let sample_frame = "100#401F7D0100000000"
+
+///|
 struct Model {
   source : String
+  frame_text : String
   selected_message : Int
   source_name : String
   source_bytes : Int?
@@ -61,10 +65,43 @@ struct Model {
 ///|
 enum Msg {
   SourceChanged(String)
+  FrameChanged(String)
   SelectMessage(Int)
   LoadSample
   FilePicked
   FileReadFinished(FileReadResult)
+}
+
+///|
+fn decode_preview(
+  parsed : @moondbc.SourceParseResult,
+  frame_text : String,
+) -> Result[@moondbc.DecodedMessage, String] {
+  if !parsed.diagnostics.is_empty() || !parsed.database.validate().is_empty() {
+    return Err("Fix DBC issues before decoding a frame.")
+  }
+  if frame_text.trim().is_empty() {
+    return Err("Enter a SocketCAN frame or candump record.")
+  }
+  let record = match @moondbc.parse_can_log_record(frame_text) {
+    Ok(value) => value
+    Err(_) =>
+      return Err(
+        "Invalid CAN record. Use 100#401F7D0100000000 or a candump line.",
+      )
+  }
+  match parsed.database.decode_can_frame(record.frame) {
+    Ok(value) => Ok(value)
+    Err(@moondbc.UnknownCanMessage(id, extended)) =>
+      Err(
+        "No DBC message matches \{if extended { "extended" } else { "standard" }} CAN ID \{id}.",
+      )
+    Err(@moondbc.PayloadTooShort(required, actual)) =>
+      Err(
+        "Frame has \{actual} \{if actual == 1 { "byte" } else { "bytes" }}; the DBC message requires \{required}.",
+      )
+    Err(_) => Err("The frame cannot be decoded with this DBC.")
+  }
 }
 
 ///|
@@ -362,6 +399,63 @@ fn signal_card(
 }
 
 ///|
+fn decoded_signal_card(signal : @moondbc.DecodedSignal) -> Html {
+  let label_text = match signal.label {
+    Some(value) => " · \{value}"
+    None => ""
+  }
+  div(class="decoded-signal", [
+    span(class="decoded-name", signal.name),
+    span(
+      class="decoded-value",
+      "\{signal.physical} \{signal.unit}\{label_text}",
+    ),
+  ])
+}
+
+///|
+fn frame_preview(
+  parsed : @moondbc.SourceParseResult,
+  frame_text : String,
+  emit : Emit[Msg],
+) -> Html {
+  let preview = decode_preview(parsed, frame_text)
+  let outcome = match preview {
+    Err(message) => div(class="frame-feedback is-error", message)
+    Ok(decoded) =>
+      div(class="frame-result", [
+        div(class="frame-result-heading", [
+          span(class="frame-message-name", decoded.name),
+          span(
+            class="frame-message-id",
+            "CAN ID \{decoded.id} · \{decoded.signals.length()} active signals",
+          ),
+        ]),
+        div(
+          class="decoded-grid",
+          decoded.signals.map(signal => decoded_signal_card(signal)),
+        ),
+      ])
+  }
+  div(class="frame-preview", [
+    div(class="section-heading", [
+      div([
+        h2("Decode a CAN frame"),
+        p("Paste a SocketCAN frame or candump record. Decoding stays local."),
+      ]),
+    ]),
+    input(
+      input_type=Text,
+      class="frame-input",
+      value=frame_text,
+      on_input=emit.map(value => FrameChanged(value)),
+      placeholder="100#401F7D0100000000",
+    ),
+    outcome,
+  ])
+}
+
+///|
 fn bit_cell(cell : @moondbc.FrameLayoutCell) -> Html {
   div(class=layout_cell_class(cell.kind), [
     span(class="bit-number", cell.bit_in_byte.to_string()),
@@ -432,6 +526,8 @@ fn layout_view(
 fn message_detail(
   result : @moondbc.SourceParseResult,
   selected_message : Int,
+  frame_text : String,
+  emit : Emit[Msg],
 ) -> Html {
   if result.database.messages.is_empty() {
     div(class="empty-panel", [
@@ -463,6 +559,7 @@ fn message_detail(
           metric("SIGNALS", message.signals.length().to_string()),
         ]),
       ]),
+      frame_preview(result, frame_text, emit),
       div(class="section-heading", [
         div([
           h2("Frame layout"),
@@ -563,7 +660,10 @@ fn workbench_view(model : Model, emit : Emit[Msg]) -> Html {
           ),
         ),
       ]),
-      div(class="detail-column", message_detail(result, model.selected_message)),
+      div(
+        class="detail-column",
+        message_detail(result, model.selected_message, model.frame_text, emit),
+      ),
     ]),
   ])
 }
@@ -573,6 +673,7 @@ fn app() -> Val[Html] {
   let (model, emit) = @rabbita.create_state(
     {
       source: sample_dbc,
+      frame_text: sample_frame,
       selected_message: 0,
       source_name: "sample.dbc",
       source_bytes: None,
@@ -593,12 +694,14 @@ fn app() -> Val[Html] {
             },
             none,
           )
+        FrameChanged(frame_text) => ({ ..model, frame_text, }, none)
         SelectMessage(selected_message) =>
           ({ ..model, selected_message, }, none)
         LoadSample =>
           (
             {
               source: sample_dbc,
+              frame_text: sample_frame,
               selected_message: 0,
               source_name: "sample.dbc",
               source_bytes: None,
@@ -631,6 +734,7 @@ fn app() -> Val[Html] {
               (
                 {
                   source,
+                  frame_text: "",
                   selected_message: 0,
                   source_name: name,
                   source_bytes: Some(size),
