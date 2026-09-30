@@ -22,6 +22,9 @@ pub(all) enum DatabaseChange {
   ValueTableAddedChange(ValueTable)
   ValueTableRemovedChange(ValueTable)
   ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
+  SignalGroupAddedChange(SignalGroup)
+  SignalGroupRemovedChange(SignalGroup)
+  SignalGroupModifiedChange(UInt, String, SignalGroup, SignalGroup)
   AttributesChangedChange(DbcAttributes, DbcAttributes)
 } derive(Eq, Debug)
 
@@ -134,6 +137,35 @@ fn diff_value_tables(
 }
 
 ///|
+fn diff_signal_groups(
+  before : Database,
+  after : Database,
+  changes : Array[DatabaseChange],
+) -> Unit {
+  for group in before.signal_groups {
+    match after.find_signal_group(group.message_id, group.name) {
+      None => changes.push(SignalGroupRemovedChange(group))
+      Some(after_group) =>
+        if group != after_group {
+          changes.push(
+            SignalGroupModifiedChange(
+              group.message_id,
+              group.name,
+              group,
+              after_group,
+            ),
+          )
+        }
+    }
+  }
+  for group in after.signal_groups {
+    if before.find_signal_group(group.message_id, group.name) is None {
+      changes.push(SignalGroupAddedChange(group))
+    }
+  }
+}
+
+///|
 /// Compare this database with a newer database. Changes are returned in a
 /// deterministic order: global metadata, removals/modifications, then additions.
 pub fn Database::diff(
@@ -160,6 +192,7 @@ pub fn Database::diff(
     }
   }
   diff_value_tables(self, newer, changes)
+  diff_signal_groups(self, newer, changes)
   if self.attributes != newer.attributes {
     changes.push(AttributesChangedChange(self.attributes, newer.attributes))
   }

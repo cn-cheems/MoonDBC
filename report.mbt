@@ -50,13 +50,16 @@ pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
     | CommentModifiedChange(_, _, _) => Informational
     MessageAddedChange(_)
     | SignalAddedChange(_, _)
-    | ValueTableAddedChange(_) => NonBreaking
+    | ValueTableAddedChange(_)
+    | SignalGroupAddedChange(_) => NonBreaking
     MessageRemovedChange(_)
     | MessageMetadataChangedChange(_, _, _)
     | SignalRemovedChange(_, _)
     | SignalModifiedChange(_, _, _, _)
     | ValueTableRemovedChange(_)
-    | ValueTableModifiedChange(_, _, _, _) => Breaking
+    | ValueTableModifiedChange(_, _, _, _)
+    | SignalGroupRemovedChange(_)
+    | SignalGroupModifiedChange(_, _, _, _) => Breaking
     AttributesChangedChange(_, _) => Breaking
   }
 }
@@ -104,6 +107,12 @@ pub fn DatabaseChange::summary(self : DatabaseChange) -> String {
       "Value table for \{table.signal_name} in message \{table.message_id} was removed."
     ValueTableModifiedChange(message_id, signal_name, _, _) =>
       "Value table for \{signal_name} in message \{message_id} was modified."
+    SignalGroupAddedChange(group) =>
+      "Signal group \{group.name} in message \{group.message_id} was added."
+    SignalGroupRemovedChange(group) =>
+      "Signal group \{group.name} in message \{group.message_id} was removed."
+    SignalGroupModifiedChange(message_id, name, _, _) =>
+      "Signal group \{name} in message \{message_id} was modified."
     AttributesChangedChange(_, _) =>
       "DBC attribute definitions, defaults, or assignments changed."
   }

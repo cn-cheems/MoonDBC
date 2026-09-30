@@ -10,6 +10,7 @@ pub(all) enum DbcWriteError {
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
   DbcWriteInvalidAttribute(String)
+  DbcWriteInvalidSignalGroup(UInt, String)
 } derive(Eq, Debug)
 
 ///|
@@ -346,6 +347,35 @@ fn write_value_table(
 }
 
 ///|
+fn write_signal_group(
+  lines : Array[String],
+  group : SignalGroup,
+) -> Result[Unit, DbcWriteError] {
+  if dbc_message_id_parts(group.message_id) is None ||
+    group.name.is_empty() ||
+    group.repetition < 0 ||
+    group.signals.is_empty() {
+    return Err(DbcWriteInvalidSignalGroup(group.message_id, group.name))
+  }
+  match check_dbc_token("signal group name", group.name) {
+    Err(_) =>
+      return Err(DbcWriteInvalidSignalGroup(group.message_id, group.name))
+    Ok(_) => ()
+  }
+  for signal in group.signals {
+    match check_dbc_token("signal group member", signal) {
+      Err(_) =>
+        return Err(DbcWriteInvalidSignalGroup(group.message_id, group.name))
+      Ok(_) => ()
+    }
+  }
+  lines.push(
+    "SIG_GROUP_ \{group.message_id} \{group.name} \{group.repetition} : \{group.signals.join(" ")};",
+  )
+  Ok(())
+}
+
+///|
 fn escape_dbc_comment(text : String) -> Result[String, DbcWriteError] {
   let chars : Array[Char] = []
   for char in text.iter() {
@@ -515,7 +545,16 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       Err(error) => return Err(error)
       Ok(_) => ()
     }
-    if index + 1 < self.value_tables.length() {
+    if index + 1 < self.value_tables.length() || !self.signal_groups.is_empty() {
+      lines.push("")
+    }
+  }
+  for index, group in self.signal_groups {
+    match write_signal_group(lines, group) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    if index + 1 < self.signal_groups.length() {
       lines.push("")
     }
   }

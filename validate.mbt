@@ -28,6 +28,10 @@ pub(all) enum ValidationIssue {
   InvalidAttributeTargetIssue(String, DbcAttributeTarget)
   AttributeScopeMismatchIssue(String, DbcAttributeTarget)
   InvalidAttributeValueIssue(String)
+  DuplicateSignalGroupIssue(UInt, String)
+  InvalidSignalGroupIssue(UInt, String)
+  UnknownSignalGroupMessageIssue(UInt, String)
+  UnknownSignalGroupMemberIssue(UInt, String, String)
 } derive(Eq, Debug)
 
 ///|
@@ -455,11 +459,49 @@ fn validate_attributes(
 }
 
 ///|
+fn validate_signal_groups(
+  database : Database,
+  issues : Array[ValidationIssue],
+) -> Unit {
+  for index, group in database.signal_groups {
+    for previous = 0; previous < index; previous = previous + 1 {
+      let candidate = database.signal_groups[previous]
+      if candidate.message_id == group.message_id &&
+        candidate.name == group.name {
+        issues.push(DuplicateSignalGroupIssue(group.message_id, group.name))
+      }
+    }
+    if group.name.is_empty() || group.repetition < 0 || group.signals.is_empty() {
+      issues.push(InvalidSignalGroupIssue(group.message_id, group.name))
+    }
+    match database.find_message(group.message_id) {
+      None =>
+        issues.push(
+          UnknownSignalGroupMessageIssue(group.message_id, group.name),
+        )
+      Some(message) =>
+        for signal_name in group.signals {
+          if message.find_signal(signal_name) is None {
+            issues.push(
+              UnknownSignalGroupMemberIssue(
+                group.message_id,
+                group.name,
+                signal_name,
+              ),
+            )
+          }
+        }
+    }
+  }
+}
+
+///|
 /// Validate cross-field and bit-layout constraints that are not syntax errors.
 pub fn Database::validate(self : Database) -> Array[ValidationIssue] {
   let issues : Array[ValidationIssue] = []
   validate_comments(self, issues)
   validate_attributes(self, issues)
+  validate_signal_groups(self, issues)
   for index, message in self.messages {
     for previous = 0; previous < index; previous = previous + 1 {
       if self.messages[previous].id == message.id {

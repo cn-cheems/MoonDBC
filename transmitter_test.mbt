@@ -64,6 +64,7 @@ test "validate and reject duplicate message transmitters" {
     nodes: ["ECU", "Backup"],
     messages: [message],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }

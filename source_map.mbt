@@ -35,6 +35,13 @@ pub(all) struct ValueTableSourceLocation {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct SignalGroupSourceLocation {
+  message_id : UInt
+  name : String
+  declaration : SourceSpan
+} derive(Eq, Debug)
+
+///|
 /// Source locations are kept separately from the semantic model so manually
 /// constructed databases and existing `parse` callers remain source-agnostic.
 pub(all) struct DbcSourceMap {
@@ -42,6 +49,7 @@ pub(all) struct DbcSourceMap {
   signals : Array[SignalSourceLocation]
   comments : Array[CommentSourceLocation]
   value_tables : Array[ValueTableSourceLocation]
+  signal_groups : Array[SignalGroupSourceLocation]
 } derive(Eq, Debug)
 
 ///|
@@ -126,6 +134,20 @@ pub fn DbcSourceMap::find_value_table(
 }
 
 ///|
+pub fn DbcSourceMap::find_signal_group(
+  self : DbcSourceMap,
+  message_id : UInt,
+  name : StringView,
+) -> SourceSpan? {
+  for location in self.signal_groups {
+    if location.message_id == message_id && location.name.view() == name {
+      return Some(location.declaration)
+    }
+  }
+  None
+}
+
+///|
 fn change_source(
   source_map : DbcSourceMap,
   change : DatabaseChange,
@@ -147,6 +169,10 @@ fn change_source(
       source_map.find_value_table(table.message_id, table.signal_name)
     ValueTableModifiedChange(id, name, _, _) =>
       source_map.find_value_table(id, name)
+    SignalGroupAddedChange(group) | SignalGroupRemovedChange(group) =>
+      source_map.find_signal_group(group.message_id, group.name)
+    SignalGroupModifiedChange(id, name, _, _) =>
+      source_map.find_signal_group(id, name)
   }
 }
 
@@ -163,14 +189,16 @@ pub fn SourceParseResult::diff_with_locations(
       CommentAddedChange(_)
       | MessageAddedChange(_)
       | SignalAddedChange(_, _)
-      | ValueTableAddedChange(_) => None
+      | ValueTableAddedChange(_)
+      | SignalGroupAddedChange(_) => None
       _ => change_source(self.source_map, change)
     }
     let new_location = match change {
       CommentRemovedChange(_)
       | MessageRemovedChange(_)
       | SignalRemovedChange(_, _)
-      | ValueTableRemovedChange(_) => None
+      | ValueTableRemovedChange(_)
+      | SignalGroupRemovedChange(_) => None
       _ => change_source(newer.source_map, change)
     }
     result.push({ change, before: old_location, after: new_location, })
@@ -219,6 +247,12 @@ fn validation_issue_source(
     | InvalidAttributeTargetIssue(_, _)
     | AttributeScopeMismatchIssue(_, _)
     | InvalidAttributeValueIssue(_) => None
+    DuplicateSignalGroupIssue(id, name)
+    | InvalidSignalGroupIssue(id, name)
+    | UnknownSignalGroupMessageIssue(id, name) =>
+      source_map.find_signal_group(id, name)
+    UnknownSignalGroupMemberIssue(id, name, _) =>
+      source_map.find_signal_group(id, name)
   }
 }
 

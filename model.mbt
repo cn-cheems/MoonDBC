@@ -76,6 +76,16 @@ pub(all) struct ValueTable {
 } derive(Eq, Debug)
 
 ///|
+/// A named DBC signal group. Groups are descriptive metadata used by editors,
+/// diagnostics, and generated integrations; they do not alter CAN bit layout.
+pub(all) struct SignalGroup {
+  message_id : UInt
+  name : String
+  repetition : Int
+  signals : Array[String]
+} derive(Eq, Debug)
+
+///|
 pub(all) enum DbcCommentTarget {
   DatabaseComment
   NodeComment(String)
@@ -159,6 +169,7 @@ pub(all) struct Database {
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
+  signal_groups : Array[SignalGroup]
   comments : Array[DbcComment]
   attributes : DbcAttributes
 } derive(Eq, Debug)
@@ -303,6 +314,21 @@ pub fn Database::find_value_table(
   for table in self.value_tables {
     if table.message_id == message_id && table.signal_name.view() == signal_name {
       return Some(table)
+    }
+  }
+  None
+}
+
+///|
+/// Find a signal group by its message identifier and group name.
+pub fn Database::find_signal_group(
+  self : Database,
+  message_id : UInt,
+  name : StringView,
+) -> SignalGroup? {
+  for group in self.signal_groups {
+    if group.message_id == message_id && group.name.view() == name {
+      return Some(group)
     }
   }
   None

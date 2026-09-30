@@ -105,6 +105,14 @@ pub fn ValidationIssue::description(self : ValidationIssue) -> String {
       "attribute \{name} is assigned to the wrong target type"
     InvalidAttributeValueIssue(name) =>
       "attribute \{name} has an invalid value or type"
+    DuplicateSignalGroupIssue(id, name) =>
+      "signal group \{name} in message \{cli_dbc_id_text(id)} is declared more than once"
+    InvalidSignalGroupIssue(id, name) =>
+      "signal group \{name} in message \{cli_dbc_id_text(id)} is invalid"
+    UnknownSignalGroupMessageIssue(id, name) =>
+      "signal group \{name} refers to unknown message \{cli_dbc_id_text(id)}"
+    UnknownSignalGroupMemberIssue(id, name, signal) =>
+      "signal group \{name} in message \{cli_dbc_id_text(id)} refers to unknown signal \{signal}"
   }
 }
 
@@ -279,6 +287,8 @@ fn cli_write_error(error : DbcWriteError) -> String {
     DbcWriteInvalidMessageIdentifier(id) =>
       "message \{id} has an invalid DBC identifier"
     DbcWriteInvalidAttribute(message) => "invalid DBC attribute: \{message}"
+    DbcWriteInvalidSignalGroup(id, name) =>
+      "signal group \{name} in message \{cli_dbc_id_text(id)} cannot be written"
   }
 }
 

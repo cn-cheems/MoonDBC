@@ -127,6 +127,7 @@ test "validate manually constructed signal metadata" {
     nodes: [],
     messages: [message],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }

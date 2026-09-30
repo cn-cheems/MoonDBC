@@ -80,6 +80,16 @@ priv struct PendingMultiplexRanges {
 }
 
 ///|
+priv struct PendingSignalGroup {
+  line : Int
+  message_id : UInt
+  name : String
+  repetition : Int
+  signals : Array[String]
+  declaration : SourceSpan
+}
+
+///|
 priv struct PendingAttributeDefault {
   line : Int
   name : String
@@ -273,6 +283,44 @@ fn parse_multiplex_ranges_line(
     ranges.push({ start, end, })
   }
   Ok((message_id, fields[1].to_owned(), fields[2].to_owned(), ranges))
+}
+
+///|
+fn parse_signal_group_line(
+  line : StringView,
+) -> Result[(UInt, String, Int, Array[String]), String] {
+  let body = line[10:].trim()
+  if !body.has_suffix(";") {
+    return Err("signal group declaration is missing ';'")
+  }
+  let content = body[:body.length() - 1].trim()
+  let colon = match content.find(":") {
+    Some(value) => value
+    None => return Err("signal group declaration is missing ':'")
+  }
+  let header = words(content[:colon])
+  if header.length() != 3 {
+    return Err("signal group requires a message id, name, and repetition")
+  }
+  let message_id = match parse_uint(header[0]) {
+    Some(value) if dbc_message_id_parts(value) is Some(_) => value
+    _ => return Err("signal group message id is invalid")
+  }
+  let repetition = match parse_int(header[2]) {
+    Some(value) if value >= 0 => value
+    _ => return Err("signal group repetition must be a nonnegative integer")
+  }
+  let signals : Array[String] = []
+  for member_list in content[colon + 1:].split(",") {
+    let names = words(member_list)
+    if names.is_empty() {
+      return Err("signal group contains an empty member")
+    }
+    for signal in names {
+      signals.push(signal.to_owned())
+    }
+  }
+  Ok((message_id, header[1].to_owned(), repetition, signals))
 }
 
 ///|
@@ -725,6 +773,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let signal_locations : Array[SignalSourceLocation] = []
   let comment_locations : Array[CommentSourceLocation] = []
   let value_table_locations : Array[ValueTableSourceLocation] = []
+  let signal_group_locations : Array[SignalGroupSourceLocation] = []
   let nodes : Array[String] = []
   let pending_value_tables : Array[PendingValueTable] = []
   let value_tables : Array[ValueTable] = []
@@ -735,6 +784,8 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let pending_signal_value_types : Array[PendingSignalValueType] = []
   let resolved_signal_value_types : Array[(UInt, String)] = []
   let pending_multiplex_ranges : Array[PendingMultiplexRanges] = []
+  let pending_signal_groups : Array[PendingSignalGroup] = []
+  let signal_groups : Array[SignalGroup] = []
   let resolved_multiplex_ranges : Array[(UInt, String)] = []
   let attributes = DbcAttributes::empty()
   let pending_attribute_defaults : Array[PendingAttributeDefault] = []
@@ -816,6 +867,20 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
           })
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC024", message)
+      }
+    } else if line.has_prefix("SIG_GROUP_ ") {
+      match parse_signal_group_line(line) {
+        Ok((message_id, name, repetition, signals)) =>
+          pending_signal_groups.push({
+            line: line_number,
+            message_id,
+            name,
+            repetition,
+            signals,
+            declaration: declaration_span(raw_line, line, line_number),
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC043", message)
       }
     } else if line.has_prefix("BA_DEF_DEF_ ") {
       match parse_attribute_default_line(line) {
@@ -1203,6 +1268,62 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
       }
     }
   }
+  for pending in pending_signal_groups {
+    match find_message_index(messages, pending.message_id) {
+      None =>
+        add_diagnostic(
+          diagnostics,
+          pending.line,
+          "DBC044",
+          "signal group refers to an unknown message",
+        )
+      Some(message_index) => {
+        let mut duplicate = false
+        for existing in signal_groups {
+          if existing.message_id == pending.message_id &&
+            existing.name == pending.name {
+            duplicate = true
+          }
+        }
+        if duplicate {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC045",
+            "duplicate signal group for the same message and name",
+          )
+        } else {
+          let message = messages[message_index]
+          let mut valid = true
+          for signal_name in pending.signals {
+            if !contains_signal_name(message, signal_name) {
+              add_diagnostic(
+                diagnostics,
+                pending.line,
+                "DBC046",
+                "signal group refers to an unknown signal",
+              )
+              valid = false
+              break
+            }
+          }
+          if valid {
+            signal_groups.push({
+              message_id: pending.message_id,
+              name: pending.name,
+              repetition: pending.repetition,
+              signals: pending.signals,
+            })
+            signal_group_locations.push({
+              message_id: pending.message_id,
+              name: pending.name,
+              declaration: pending.declaration,
+            })
+          }
+        }
+      }
+    }
+  }
   for pending in pending_attribute_defaults {
     match find_attribute_definition(attributes.definitions, pending.name) {
       None =>
@@ -1301,13 +1422,22 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
     }
   }
   {
-    database: { version, nodes, messages, value_tables, comments, attributes, },
+    database: {
+      version,
+      nodes,
+      messages,
+      value_tables,
+      signal_groups,
+      comments,
+      attributes,
+    },
     diagnostics,
     source_map: {
       messages: message_locations,
       signals: signal_locations,
       comments: comment_locations,
       value_tables: value_table_locations,
+      signal_groups: signal_group_locations,
     },
   }
 }

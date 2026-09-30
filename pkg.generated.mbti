@@ -148,6 +148,7 @@ pub(all) struct Database {
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
+  signal_groups : Array[SignalGroup]
   comments : Array[DbcComment]
   attributes : DbcAttributes
 } derive(Eq, @debug.Debug)
@@ -169,6 +170,7 @@ pub fn Database::equal(Self, Self) -> Bool
 pub fn Database::find_can_message(Self, UInt, Bool) -> Message?
 pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
 pub fn Database::find_message(Self, UInt) -> Message?
+pub fn Database::find_signal_group(Self, UInt, StringView) -> SignalGroup?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
 pub fn Database::generate_moonbit_constants(Self) -> String
 pub fn Database::generate_moonbit_signal_codecs(Self) -> Result[String, String]
@@ -196,6 +198,9 @@ pub(all) enum DatabaseChange {
   ValueTableAddedChange(ValueTable)
   ValueTableRemovedChange(ValueTable)
   ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
+  SignalGroupAddedChange(SignalGroup)
+  SignalGroupRemovedChange(SignalGroup)
+  SignalGroupModifiedChange(UInt, String, SignalGroup, SignalGroup)
   AttributesChangedChange(DbcAttributes, DbcAttributes)
 } derive(Eq, @debug.Debug)
 pub fn DatabaseChange::equal(Self, Self) -> Bool
@@ -303,11 +308,13 @@ pub(all) struct DbcSourceMap {
   signals : Array[SignalSourceLocation]
   comments : Array[CommentSourceLocation]
   value_tables : Array[ValueTableSourceLocation]
+  signal_groups : Array[SignalGroupSourceLocation]
 } derive(Eq, @debug.Debug)
 pub fn DbcSourceMap::equal(Self, Self) -> Bool
 pub fn DbcSourceMap::find_comment(Self, DbcCommentTarget) -> SourceSpan?
 pub fn DbcSourceMap::find_message(Self, UInt) -> SourceSpan?
 pub fn DbcSourceMap::find_signal(Self, UInt, StringView) -> SourceSpan?
+pub fn DbcSourceMap::find_signal_group(Self, UInt, StringView) -> SourceSpan?
 pub fn DbcSourceMap::find_value_table(Self, UInt, StringView) -> SourceSpan?
 pub fn DbcSourceMap::not_equal(Self, Self) -> Bool
 pub fn DbcSourceMap::to_repr(Self) -> @debug.Repr
@@ -323,6 +330,7 @@ pub(all) enum DbcWriteError {
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
   DbcWriteInvalidAttribute(String)
+  DbcWriteInvalidSignalGroup(UInt, String)
 } derive(Eq, @debug.Debug)
 pub fn DbcWriteError::equal(Self, Self) -> Bool
 pub fn DbcWriteError::not_equal(Self, Self) -> Bool
@@ -608,6 +616,25 @@ pub fn SignalAssignment::equal(Self, Self) -> Bool
 pub fn SignalAssignment::not_equal(Self, Self) -> Bool
 pub fn SignalAssignment::to_repr(Self) -> @debug.Repr
 
+pub(all) struct SignalGroup {
+  message_id : UInt
+  name : String
+  repetition : Int
+  signals : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn SignalGroup::equal(Self, Self) -> Bool
+pub fn SignalGroup::not_equal(Self, Self) -> Bool
+pub fn SignalGroup::to_repr(Self) -> @debug.Repr
+
+pub(all) struct SignalGroupSourceLocation {
+  message_id : UInt
+  name : String
+  declaration : SourceSpan
+} derive(Eq, @debug.Debug)
+pub fn SignalGroupSourceLocation::equal(Self, Self) -> Bool
+pub fn SignalGroupSourceLocation::not_equal(Self, Self) -> Bool
+pub fn SignalGroupSourceLocation::to_repr(Self) -> @debug.Repr
+
 pub(all) struct SignalSourceLocation {
   message_id : UInt
   signal_name : String
@@ -706,6 +733,10 @@ pub(all) enum ValidationIssue {
   InvalidAttributeTargetIssue(String, DbcAttributeTarget)
   AttributeScopeMismatchIssue(String, DbcAttributeTarget)
   InvalidAttributeValueIssue(String)
+  DuplicateSignalGroupIssue(UInt, String)
+  InvalidSignalGroupIssue(UInt, String)
+  UnknownSignalGroupMessageIssue(UInt, String)
+  UnknownSignalGroupMemberIssue(UInt, String, String)
 } derive(Eq, @debug.Debug)
 pub fn ValidationIssue::description(Self) -> String
 pub fn ValidationIssue::equal(Self, Self) -> Bool

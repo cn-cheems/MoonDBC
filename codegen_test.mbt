@@ -124,6 +124,7 @@ test "generated identifiers are normalized and stable" {
       },
     ],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
@@ -158,6 +159,7 @@ test "empty databases still generate a valid source header" {
     nodes: [],
     messages: [],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }

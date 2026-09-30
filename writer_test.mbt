@@ -41,6 +41,7 @@ test "write an empty database with an explicit node declaration" {
     nodes: [],
     messages: [],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
@@ -57,6 +58,7 @@ test "reject tokens and quoted text that cannot round trip" {
     nodes: ["Body ECU"],
     messages: [],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
@@ -69,6 +71,7 @@ test "reject tokens and quoted text that cannot round trip" {
     nodes: [],
     messages: [],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
@@ -113,6 +116,7 @@ test "reject invalid message and signal values" {
       },
     ],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
@@ -134,6 +138,7 @@ test "reject invalid message and signal values" {
       },
     ],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
@@ -174,6 +179,7 @@ test "reject invalid multiplex values and empty value tables" {
       },
     ],
     value_tables: [],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
@@ -186,6 +192,7 @@ test "reject invalid multiplex values and empty value tables" {
     nodes: [],
     messages: [],
     value_tables: [{ message_id: 905U, signal_name: "State", entries: [], }],
+    signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),
   }
