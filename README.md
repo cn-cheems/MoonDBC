@@ -2,6 +2,9 @@
 
 MoonDBC is a DBC parser and CAN signal codec toolkit written in MoonBit. It is intended for automotive gateways, battery-management systems, robotics, test benches, and browser-based diagnostic tools that need to turn raw CAN frames into named engineering values.
 
+Start with the [five-minute demonstration](examples/DEMO.md) to validate a
+real DBC, decode a CAN log, review compatibility and try the local workbench.
+
 The current milestone provides a portable DBC data model, parsing for messages, signals, signal groups, environment variables, comments, attributes and local or global value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SG_MUL_VAL_`, `SIG_GROUP_`, `SIG_VALTYPE_`, `EV_`, `ENVVAR_DATA_`, `CM_`, `BA_DEF_`, `BA_DEF_DEF_`, `BA_`, `VAL_`, and `VAL_TABLE_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, basic and range-based single-selector multiplexing, named signal groups, reusable global enum tables, environment-variable metadata, documentation comments, scoped attributes, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; relationship attributes and nested/multiple-selector multiplexing are not implemented.
 
 ## Quick start
