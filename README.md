@@ -2,7 +2,7 @@
 
 MoonDBC is a DBC parser and CAN signal codec toolkit written in MoonBit. It is intended for automotive gateways, battery-management systems, robotics, test benches, and browser-based diagnostic tools that need to turn raw CAN frames into named engineering values.
 
-The current milestone provides a portable DBC data model, parsing for messages, signals, signal groups, comments, attributes and local or global value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SG_MUL_VAL_`, `SIG_GROUP_`, `SIG_VALTYPE_`, `CM_`, `BA_DEF_`, `BA_DEF_DEF_`, `BA_`, `VAL_`, and `VAL_TABLE_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, basic and range-based single-selector multiplexing, named signal groups, reusable global enum tables, documentation comments, scoped attributes, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; relationship attributes and nested/multiple-selector multiplexing are not implemented.
+The current milestone provides a portable DBC data model, parsing for messages, signals, signal groups, environment variables, comments, attributes and local or global value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SG_MUL_VAL_`, `SIG_GROUP_`, `SIG_VALTYPE_`, `EV_`, `ENVVAR_DATA_`, `CM_`, `BA_DEF_`, `BA_DEF_DEF_`, `BA_`, `VAL_`, and `VAL_TABLE_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, basic and range-based single-selector multiplexing, named signal groups, reusable global enum tables, environment-variable metadata, documentation comments, scoped attributes, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; relationship attributes and nested/multiple-selector multiplexing are not implemented.
 
 ## Quick start
 
@@ -137,6 +137,8 @@ compiled and tested on the supported targets.
 
 ## Current scope
 
+- DBC environment variables (EV_ and ENVVAR_DATA_) with type, bounds, initial value, access metadata, optional data size, source locations, validation, deterministic export, and compatibility reports;
+- Environment-variable comments, value descriptions, and attribute assignments are not yet supported and remain explicit parse errors;
 - typed models for databases, messages, signals, byte order, signedness, and multiplexing;
 - parsing of core message and signal declarations;
 - deferred resolution of `VAL_` value descriptions and label lookup;

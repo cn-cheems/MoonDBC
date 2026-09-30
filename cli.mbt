@@ -117,6 +117,10 @@ pub fn ValidationIssue::description(self : ValidationIssue) -> String {
       "global value table \{name} is declared more than once"
     InvalidGlobalValueTableIssue(name) =>
       "global value table \{name} is invalid"
+    DuplicateEnvironmentVariableIssue(name) =>
+      "environment variable \{name} is declared more than once"
+    InvalidEnvironmentVariableIssue(name) =>
+      "environment variable \{name} is invalid"
   }
 }
 
@@ -295,6 +299,8 @@ fn cli_write_error(error : DbcWriteError) -> String {
     DbcWriteInvalidAttribute(message) => "invalid DBC attribute: \{message}"
     DbcWriteInvalidSignalGroup(id, name) =>
       "signal group \{name} in message \{cli_dbc_id_text(id)} cannot be written"
+    DbcWriteInvalidEnvironmentVariable(name) =>
+      "environment variable \{name} cannot be written"
   }
 }
 
@@ -644,7 +650,11 @@ fn cli_format_line_is_supported(line : StringView) -> Bool {
   line.has_prefix("BO_ ") ||
   line.has_prefix("SG_ ") ||
   line.has_prefix("CM_ ") ||
-  line.has_prefix("VAL_ ")
+  line.has_prefix("VAL_ ") ||
+  line.has_prefix("VAL_TABLE_ ") ||
+  line.has_prefix("SIG_GROUP_ ") ||
+  line.has_prefix("EV_ ") ||
+  line.has_prefix("ENVVAR_DATA_ ")
 }
 
 ///|

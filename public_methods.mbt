@@ -216,6 +216,12 @@ pub extend GlobalValueTable with Eq::{not_equal, equal}
 pub extend GlobalValueTable with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+pub extend EnvironmentVariable with Eq::{not_equal, equal}
+
+///|
+pub extend EnvironmentVariable with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub extend SignalGroup with Eq::{not_equal, equal}
 
 ///|
@@ -342,6 +348,14 @@ pub extend GlobalValueTableSourceLocation with Eq::{not_equal, equal}
 
 ///|
 pub extend GlobalValueTableSourceLocation with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend EnvironmentVariableSourceLocation with Eq::{not_equal, equal}
+
+///|
+pub extend EnvironmentVariableSourceLocation with @moonbitlang/core/debug.Debug::{
   to_repr,
 }
 

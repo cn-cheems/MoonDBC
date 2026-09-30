@@ -25,6 +25,13 @@ pub(all) enum DatabaseChange {
   GlobalValueTableAddedChange(GlobalValueTable)
   GlobalValueTableRemovedChange(GlobalValueTable)
   GlobalValueTableModifiedChange(String, GlobalValueTable, GlobalValueTable)
+  EnvironmentVariableAddedChange(EnvironmentVariable)
+  EnvironmentVariableRemovedChange(EnvironmentVariable)
+  EnvironmentVariableModifiedChange(
+    String,
+    EnvironmentVariable,
+    EnvironmentVariable
+  )
   SignalGroupAddedChange(SignalGroup)
   SignalGroupRemovedChange(SignalGroup)
   SignalGroupModifiedChange(UInt, String, SignalGroup, SignalGroup)
@@ -193,6 +200,34 @@ fn diff_global_value_tables(
 }
 
 ///|
+fn diff_environment_variables(
+  before : Database,
+  after : Database,
+  changes : Array[DatabaseChange],
+) -> Unit {
+  for variable in before.environment_variables {
+    match after.find_environment_variable(variable.name) {
+      None => changes.push(EnvironmentVariableRemovedChange(variable))
+      Some(after_variable) =>
+        if variable != after_variable {
+          changes.push(
+            EnvironmentVariableModifiedChange(
+              variable.name,
+              variable,
+              after_variable,
+            ),
+          )
+        }
+    }
+  }
+  for variable in after.environment_variables {
+    if before.find_environment_variable(variable.name) is None {
+      changes.push(EnvironmentVariableAddedChange(variable))
+    }
+  }
+}
+
+///|
 /// Compare this database with a newer database. Changes are returned in a
 /// deterministic order: global metadata, removals/modifications, then additions.
 pub fn Database::diff(
@@ -220,6 +255,7 @@ pub fn Database::diff(
   }
   diff_value_tables(self, newer, changes)
   diff_global_value_tables(self, newer, changes)
+  diff_environment_variables(self, newer, changes)
   diff_signal_groups(self, newer, changes)
   if self.attributes != newer.attributes {
     changes.push(AttributesChangedChange(self.attributes, newer.attributes))

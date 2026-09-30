@@ -149,6 +149,7 @@ pub(all) struct Database {
   messages : Array[Message]
   value_tables : Array[ValueTable]
   global_value_tables : Array[GlobalValueTable]
+  environment_variables : Array[EnvironmentVariable]
   signal_groups : Array[SignalGroup]
   comments : Array[DbcComment]
   attributes : DbcAttributes
@@ -170,6 +171,7 @@ pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Byt
 pub fn Database::equal(Self, Self) -> Bool
 pub fn Database::find_can_message(Self, UInt, Bool) -> Message?
 pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
+pub fn Database::find_environment_variable(Self, StringView) -> EnvironmentVariable?
 pub fn Database::find_global_value_table(Self, StringView) -> GlobalValueTable?
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_signal_group(Self, UInt, StringView) -> SignalGroup?
@@ -203,6 +205,9 @@ pub(all) enum DatabaseChange {
   GlobalValueTableAddedChange(GlobalValueTable)
   GlobalValueTableRemovedChange(GlobalValueTable)
   GlobalValueTableModifiedChange(String, GlobalValueTable, GlobalValueTable)
+  EnvironmentVariableAddedChange(EnvironmentVariable)
+  EnvironmentVariableRemovedChange(EnvironmentVariable)
+  EnvironmentVariableModifiedChange(String, EnvironmentVariable, EnvironmentVariable)
   SignalGroupAddedChange(SignalGroup)
   SignalGroupRemovedChange(SignalGroup)
   SignalGroupModifiedChange(UInt, String, SignalGroup, SignalGroup)
@@ -314,10 +319,12 @@ pub(all) struct DbcSourceMap {
   comments : Array[CommentSourceLocation]
   value_tables : Array[ValueTableSourceLocation]
   global_value_tables : Array[GlobalValueTableSourceLocation]
+  environment_variables : Array[EnvironmentVariableSourceLocation]
   signal_groups : Array[SignalGroupSourceLocation]
 } derive(Eq, @debug.Debug)
 pub fn DbcSourceMap::equal(Self, Self) -> Bool
 pub fn DbcSourceMap::find_comment(Self, DbcCommentTarget) -> SourceSpan?
+pub fn DbcSourceMap::find_environment_variable(Self, StringView) -> SourceSpan?
 pub fn DbcSourceMap::find_global_value_table(Self, StringView) -> SourceSpan?
 pub fn DbcSourceMap::find_message(Self, UInt) -> SourceSpan?
 pub fn DbcSourceMap::find_signal(Self, UInt, StringView) -> SourceSpan?
@@ -339,6 +346,7 @@ pub(all) enum DbcWriteError {
   DbcWriteInvalidMessageIdentifier(UInt)
   DbcWriteInvalidAttribute(String)
   DbcWriteInvalidSignalGroup(UInt, String)
+  DbcWriteInvalidEnvironmentVariable(String)
 } derive(Eq, @debug.Debug)
 pub fn DbcWriteError::equal(Self, Self) -> Bool
 pub fn DbcWriteError::not_equal(Self, Self) -> Bool
@@ -409,6 +417,30 @@ pub(all) enum EncodeError {
 pub fn EncodeError::equal(Self, Self) -> Bool
 pub fn EncodeError::not_equal(Self, Self) -> Bool
 pub fn EncodeError::to_repr(Self) -> @debug.Repr
+
+pub(all) struct EnvironmentVariable {
+  name : String
+  value_type : Int
+  minimum : Double
+  maximum : Double
+  unit : String
+  initial_value : Double
+  id : UInt
+  access_type : Int
+  access_nodes : Array[String]
+  data_size : UInt?
+} derive(Eq, @debug.Debug)
+pub fn EnvironmentVariable::equal(Self, Self) -> Bool
+pub fn EnvironmentVariable::not_equal(Self, Self) -> Bool
+pub fn EnvironmentVariable::to_repr(Self) -> @debug.Repr
+
+pub(all) struct EnvironmentVariableSourceLocation {
+  name : String
+  declaration : SourceSpan
+} derive(Eq, @debug.Debug)
+pub fn EnvironmentVariableSourceLocation::equal(Self, Self) -> Bool
+pub fn EnvironmentVariableSourceLocation::not_equal(Self, Self) -> Bool
+pub fn EnvironmentVariableSourceLocation::to_repr(Self) -> @debug.Repr
 
 pub(all) enum FrameDecodeError {
   UnknownMessage(UInt)
@@ -763,6 +795,8 @@ pub(all) enum ValidationIssue {
   UnknownSignalGroupMemberIssue(UInt, String, String)
   DuplicateGlobalValueTableIssue(String)
   InvalidGlobalValueTableIssue(String)
+  DuplicateEnvironmentVariableIssue(String)
+  InvalidEnvironmentVariableIssue(String)
 } derive(Eq, @debug.Debug)
 pub fn ValidationIssue::description(Self) -> String
 pub fn ValidationIssue::equal(Self, Self) -> Bool

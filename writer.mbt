@@ -12,6 +12,7 @@ pub(all) enum DbcWriteError {
   DbcWriteInvalidMessageIdentifier(UInt)
   DbcWriteInvalidAttribute(String)
   DbcWriteInvalidSignalGroup(UInt, String)
+  DbcWriteInvalidEnvironmentVariable(String)
 } derive(Eq, Debug)
 
 ///|
@@ -451,6 +452,48 @@ fn write_comment(comment : DbcComment) -> Result[String, DbcWriteError] {
 }
 
 ///|
+fn write_environment_variable(
+  lines : Array[String],
+  variable : EnvironmentVariable,
+) -> Result[Unit, DbcWriteError] {
+  let mut valid = dbc_token_is_valid(variable.name) &&
+    variable.value_type >= 0 &&
+    variable.value_type <= 2 &&
+    variable.access_type >= 0 &&
+    variable.access_type <= 3 &&
+    !variable.minimum.is_nan() &&
+    !variable.minimum.is_inf() &&
+    !variable.maximum.is_nan() &&
+    !variable.maximum.is_inf() &&
+    !variable.initial_value.is_nan() &&
+    !variable.initial_value.is_inf() &&
+    variable.minimum <= variable.maximum &&
+    variable.initial_value >= variable.minimum &&
+    variable.initial_value <= variable.maximum &&
+    !variable.access_nodes.is_empty()
+  for node in variable.access_nodes {
+    if !dbc_token_is_valid(node) {
+      valid = false
+    }
+  }
+  if !valid {
+    return Err(DbcWriteInvalidEnvironmentVariable(variable.name))
+  }
+  let unit = match escape_dbc_comment(variable.unit) {
+    Ok(value) => value
+    Err(_) => return Err(DbcWriteInvalidEnvironmentVariable(variable.name))
+  }
+  lines.push(
+    "EV_ \{variable.name} : \{variable.value_type} [\{variable.minimum}|\{variable.maximum}] \"\{unit}\" \{variable.initial_value} \{variable.id} DUMMY_NODE_VECTOR\{variable.access_type} \{variable.access_nodes.join(",")};",
+  )
+  match variable.data_size {
+    Some(size) => lines.push("ENVVAR_DATA_ \{variable.name} : \{size};")
+    None => ()
+  }
+  Ok(())
+}
+
+///|
 /// Write the supported database model as deterministic DBC text. Structurally
 /// invalid models should be checked with `Database::validate` before export;
 /// this method reports values that cannot be represented by the parser syntax.
@@ -603,6 +646,17 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
     }
     if index + 1 < self.signal_groups.length() {
       lines.push("")
+    }
+  }
+  if !self.environment_variables.is_empty() {
+    if lines.last() != Some("") {
+      lines.push("")
+    }
+    for variable in self.environment_variables {
+      match write_environment_variable(lines, variable) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
     }
   }
   Ok(lines.join("\n"))

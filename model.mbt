@@ -83,6 +83,21 @@ pub(all) struct GlobalValueTable {
 } derive(Eq, Debug)
 
 ///|
+/// DBC environment variable; an optional data size comes from ENVVAR_DATA_.
+pub(all) struct EnvironmentVariable {
+  name : String
+  value_type : Int
+  minimum : Double
+  maximum : Double
+  unit : String
+  initial_value : Double
+  id : UInt
+  access_type : Int
+  access_nodes : Array[String]
+  data_size : UInt?
+} derive(Eq, Debug)
+
+///|
 /// A named DBC signal group. Groups are descriptive metadata used by editors,
 /// diagnostics, and generated integrations; they do not alter CAN bit layout.
 pub(all) struct SignalGroup {
@@ -177,6 +192,7 @@ pub(all) struct Database {
   messages : Array[Message]
   value_tables : Array[ValueTable]
   global_value_tables : Array[GlobalValueTable]
+  environment_variables : Array[EnvironmentVariable]
   signal_groups : Array[SignalGroup]
   comments : Array[DbcComment]
   attributes : DbcAttributes
@@ -260,6 +276,19 @@ pub fn Database::find_message(self : Database, id : UInt) -> Message? {
   for message in self.messages {
     if message.id == id {
       return Some(message)
+    }
+  }
+  None
+}
+
+///|
+pub fn Database::find_environment_variable(
+  self : Database,
+  name : StringView,
+) -> EnvironmentVariable? {
+  for variable in self.environment_variables {
+    if variable.name.view() == name {
+      return Some(variable)
     }
   }
   None

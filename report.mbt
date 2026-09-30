@@ -52,6 +52,7 @@ pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
     | SignalAddedChange(_, _)
     | ValueTableAddedChange(_)
     | GlobalValueTableAddedChange(_)
+    | EnvironmentVariableAddedChange(_)
     | SignalGroupAddedChange(_) => NonBreaking
     MessageRemovedChange(_)
     | MessageMetadataChangedChange(_, _, _)
@@ -61,6 +62,8 @@ pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
     | ValueTableModifiedChange(_, _, _, _)
     | GlobalValueTableRemovedChange(_)
     | GlobalValueTableModifiedChange(_, _, _)
+    | EnvironmentVariableRemovedChange(_)
+    | EnvironmentVariableModifiedChange(_, _, _)
     | SignalGroupRemovedChange(_)
     | SignalGroupModifiedChange(_, _, _, _) => Breaking
     AttributesChangedChange(_, _) => Breaking
@@ -116,6 +119,12 @@ pub fn DatabaseChange::summary(self : DatabaseChange) -> String {
       "Global value table \{table.name} was removed."
     GlobalValueTableModifiedChange(name, _, _) =>
       "Global value table \{name} was modified."
+    EnvironmentVariableAddedChange(variable) =>
+      "Environment variable \{variable.name} was added."
+    EnvironmentVariableRemovedChange(variable) =>
+      "Environment variable \{variable.name} was removed."
+    EnvironmentVariableModifiedChange(name, _, _) =>
+      "Environment variable \{name} was modified."
     SignalGroupAddedChange(group) =>
       "Signal group \{group.name} in message \{group.message_id} was added."
     SignalGroupRemovedChange(group) =>

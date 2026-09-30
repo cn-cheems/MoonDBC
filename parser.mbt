@@ -56,6 +56,135 @@ priv struct PendingGlobalValueTable {
 }
 
 ///|
+priv struct PendingEnvironmentData {
+  line : Int
+  name : String
+  size : UInt
+}
+
+///|
+fn parse_environment_variable_line(
+  line : StringView,
+) -> Result[EnvironmentVariable, String] {
+  if !line.has_suffix(";") {
+    return Err("environment variable declaration is missing ';'")
+  }
+  let body = line[4:line.length() - 1].trim()
+  let colon = match body.find(":") {
+    Some(value) => value
+    None => return Err("environment variable declaration is missing ':'")
+  }
+  let name = body[:colon].trim()
+  if !dbc_token_is_valid(name) {
+    return Err("environment variable name is invalid")
+  }
+  let fields = words(body[colon + 1:])
+  if fields.length() < 2 {
+    return Err("environment variable type or range is missing")
+  }
+  let value_type = match parse_int(fields[0]) {
+    Some(value) if value >= 0 && value <= 2 => value
+    _ => return Err("environment variable type must be 0, 1, or 2")
+  }
+  let rest = body[colon + 1:].trim()
+  let range_start = match rest.find("[") {
+    Some(value) => value
+    None => return Err("environment variable range is missing")
+  }
+  if words(rest[:range_start]).length() != 1 {
+    return Err("environment variable type is malformed")
+  }
+  let range_end = match find_after(rest, range_start + 1, "]") {
+    Some(value) => value
+    None => return Err("environment variable range is missing ']'")
+  }
+  let bounds = rest[range_start + 1:range_end].split("|").collect()
+  if bounds.length() != 2 {
+    return Err("environment variable range requires minimum and maximum")
+  }
+  let minimum = match parse_double(bounds[0].trim()) {
+    Some(value) => value
+    None => return Err("environment variable minimum is invalid")
+  }
+  let maximum = match parse_double(bounds[1].trim()) {
+    Some(value) => value
+    None => return Err("environment variable maximum is invalid")
+  }
+  let (unit, tail) = match
+    parse_value_description_label(
+      rest[range_end + 1:].trim(),
+      "environment variable unit",
+    ) {
+    Ok(value) => value
+    Err(message) => return Err(message)
+  }
+  let tail_fields = words(tail)
+  if tail_fields.length() != 4 {
+    return Err(
+      "environment variable requires initial value, id, access type, and nodes",
+    )
+  }
+  let initial_value = match parse_double(tail_fields[0]) {
+    Some(value) => value
+    None => return Err("environment variable initial value is invalid")
+  }
+  let id = match parse_uint(tail_fields[1]) {
+    Some(value) => value
+    None => return Err("environment variable id is not unsigned")
+  }
+  if !tail_fields[2].has_prefix("DUMMY_NODE_VECTOR") {
+    return Err("environment variable access type is invalid")
+  }
+  let access_type = match parse_int(tail_fields[2][17:]) {
+    Some(value) if value >= 0 && value <= 3 => value
+    _ => return Err("environment variable access type must be 0 through 3")
+  }
+  let access_nodes : Array[String] = []
+  for raw_node in tail_fields[3].split(",") {
+    let node = raw_node.trim()
+    if !dbc_token_is_valid(node) {
+      return Err("environment variable access node is invalid")
+    }
+    access_nodes.push(node.to_owned())
+  }
+  Ok({
+    name: name.to_owned(),
+    value_type,
+    minimum,
+    maximum,
+    unit,
+    initial_value,
+    id,
+    access_type,
+    access_nodes,
+    data_size: None,
+  })
+}
+
+///|
+fn parse_environment_data_line(
+  line : StringView,
+) -> Result[(String, UInt), String] {
+  if !line.has_suffix(";") {
+    return Err("environment data declaration is missing ';'")
+  }
+  let body = line[12:line.length() - 1].trim()
+  let colon = match body.find(":") {
+    Some(value) => value
+    None => return Err("environment data declaration is missing ':'")
+  }
+  let name = body[:colon].trim()
+  if !dbc_token_is_valid(name) {
+    return Err("environment data variable name is invalid")
+  }
+  let size = match parse_uint(body[colon + 1:].trim()) {
+    Some(value) => value
+    None => return Err("environment data size is not unsigned")
+  }
+  Ok((name.to_owned(), size))
+}
+
+///|
 priv struct PendingDbcComment {
   line : Int
   target : DbcCommentTarget
@@ -883,12 +1012,15 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let comment_locations : Array[CommentSourceLocation] = []
   let value_table_locations : Array[ValueTableSourceLocation] = []
   let global_value_table_locations : Array[GlobalValueTableSourceLocation] = []
+  let environment_variable_locations : Array[EnvironmentVariableSourceLocation] = []
   let signal_group_locations : Array[SignalGroupSourceLocation] = []
   let nodes : Array[String] = []
   let pending_value_tables : Array[PendingValueTable] = []
   let value_tables : Array[ValueTable] = []
   let pending_global_value_tables : Array[PendingGlobalValueTable] = []
   let global_value_tables : Array[GlobalValueTable] = []
+  let environment_variables : Array[EnvironmentVariable] = []
+  let pending_environment_data : Array[PendingEnvironmentData] = []
   let pending_comments : Array[PendingDbcComment] = []
   let comments : Array[DbcComment] = []
   let pending_message_transmitters : Array[PendingMessageTransmitters] = []
@@ -943,6 +1075,32 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
         if !contains_node(nodes, node) {
           nodes.push(node.to_owned())
         }
+      }
+    } else if line.has_prefix("ENVVAR_DATA_ ") {
+      match parse_environment_data_line(line) {
+        Ok((name, size)) =>
+          pending_environment_data.push({ line: line_number, name, size, })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC051", message)
+      }
+    } else if line.has_prefix("EV_ ") {
+      match parse_environment_variable_line(line) {
+        Ok(variable) =>
+          if environment_variables.any(existing => {
+              existing.name == variable.name
+            }) {
+            add_diagnostic(
+              diagnostics, line_number, "DBC050", "duplicate environment variable",
+            )
+          } else {
+            environment_variables.push(variable)
+            environment_variable_locations.push({
+              name: variable.name,
+              declaration: declaration_span(raw_line, line, line_number),
+            })
+          }
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC049", message)
       }
     } else if line.has_prefix("BO_TX_BU_ ") {
       match parse_message_transmitters_line(line) {
@@ -1186,6 +1344,36 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
         name: pending.name,
         declaration: pending.declaration,
       })
+    }
+  }
+  for pending in pending_environment_data {
+    let mut found = false
+    for index, variable in environment_variables {
+      if variable.name == pending.name {
+        found = true
+        if variable.data_size is Some(_) {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC053",
+            "duplicate environment data declaration",
+          )
+        } else {
+          environment_variables[index] = {
+            ..variable,
+            data_size: Some(pending.size),
+          }
+        }
+        break
+      }
+    }
+    if !found {
+      add_diagnostic(
+        diagnostics,
+        pending.line,
+        "DBC052",
+        "environment data refers to an unknown variable",
+      )
     }
   }
   for pending in pending_comments {
@@ -1568,6 +1756,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
       messages,
       value_tables,
       global_value_tables,
+      environment_variables,
       signal_groups,
       comments,
       attributes,
@@ -1579,6 +1768,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
       comments: comment_locations,
       value_tables: value_table_locations,
       global_value_tables: global_value_table_locations,
+      environment_variables: environment_variable_locations,
       signal_groups: signal_group_locations,
     },
   }

@@ -65,6 +65,7 @@ test "validate and reject duplicate message transmitters" {
     messages: [message],
     value_tables: [],
     global_value_tables: [],
+    environment_variables: [],
     signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),

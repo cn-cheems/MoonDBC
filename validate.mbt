@@ -34,6 +34,8 @@ pub(all) enum ValidationIssue {
   UnknownSignalGroupMemberIssue(UInt, String, String)
   DuplicateGlobalValueTableIssue(String)
   InvalidGlobalValueTableIssue(String)
+  DuplicateEnvironmentVariableIssue(String)
+  InvalidEnvironmentVariableIssue(String)
 } derive(Eq, Debug)
 
 ///|
@@ -522,12 +524,50 @@ fn validate_global_value_tables(
 }
 
 ///|
+fn validate_environment_variables(
+  database : Database,
+  issues : Array[ValidationIssue],
+) -> Unit {
+  for index, variable in database.environment_variables {
+    for previous = 0; previous < index; previous = previous + 1 {
+      if database.environment_variables[previous].name == variable.name {
+        issues.push(DuplicateEnvironmentVariableIssue(variable.name))
+      }
+    }
+    let mut invalid = !dbc_token_is_valid(variable.name) ||
+      variable.value_type < 0 ||
+      variable.value_type > 2 ||
+      variable.minimum.is_nan() ||
+      variable.minimum.is_inf() ||
+      variable.maximum.is_nan() ||
+      variable.maximum.is_inf() ||
+      variable.initial_value.is_nan() ||
+      variable.initial_value.is_inf() ||
+      variable.minimum > variable.maximum ||
+      variable.initial_value < variable.minimum ||
+      variable.initial_value > variable.maximum ||
+      variable.access_type < 0 ||
+      variable.access_type > 3 ||
+      variable.access_nodes.is_empty()
+    for node in variable.access_nodes {
+      if !dbc_token_is_valid(node) {
+        invalid = true
+      }
+    }
+    if invalid {
+      issues.push(InvalidEnvironmentVariableIssue(variable.name))
+    }
+  }
+}
+
+///|
 /// Validate cross-field and bit-layout constraints that are not syntax errors.
 pub fn Database::validate(self : Database) -> Array[ValidationIssue] {
   let issues : Array[ValidationIssue] = []
   validate_comments(self, issues)
   validate_attributes(self, issues)
   validate_global_value_tables(self, issues)
+  validate_environment_variables(self, issues)
   validate_signal_groups(self, issues)
   for index, message in self.messages {
     for previous = 0; previous < index; previous = previous + 1 {
