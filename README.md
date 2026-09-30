@@ -4,6 +4,9 @@ MoonDBC is a DBC parser and CAN signal codec toolkit written in MoonBit. It is i
 
 Start with the [five-minute demonstration](examples/DEMO.md) to validate a
 real DBC, decode a CAN log, review compatibility and try the local workbench.
+For a larger, externally hosted vehicle capture, see the
+[real CAN capture walkthrough](examples/REAL_DATA.md), including measured DBC
+coverage and data provenance.
 
 The current milestone provides a portable DBC data model, parsing for messages, signals, signal groups, environment variables, comments, attributes and local or global value tables, source-line diagnostics, and Intel/Motorola signal encoding and decoding. The parser recognizes `VERSION`, `BU_`, `BO_`, `BO_TX_BU_`, `SG_`, `SG_MUL_VAL_`, `SIG_GROUP_`, `SIG_VALTYPE_`, `EV_`, `ENVVAR_DATA_`, `CM_`, `BA_DEF_`, `BA_DEF_DEF_`, `BA_`, `VAL_`, and `VAL_TABLE_` declarations, including standard and 29-bit extended frame identifiers, multiple transmitters, integer and IEEE-754 Float32/Float64 signals, byte order, signedness, scale, offset, range, unit, receivers, basic and range-based single-selector multiplexing, named signal groups, reusable global enum tables, environment-variable metadata, documentation comments, scoped attributes, and enum labels. `NS_` namespace listings and an empty `BS_:` header are accepted as structural metadata. Other declarations are reported as unsupported instead of silently discarded; relationship attributes and nested/multiple-selector multiplexing are not implemented.
 
@@ -108,6 +111,7 @@ Inspect a real DBC file with the native command-line tool:
 moon run --target native cmd/moondbc -- check examples/vehicle.dbc
 moon run --target native cmd/moondbc -- list examples/vehicle.dbc
 moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log
+moon run --target native cmd/moondbc -- summary examples/vehicle.dbc examples/vehicle.log
 moon run --target native cmd/moondbc -- encode examples/vehicle.dbc 100 EngineSpeed=1000 CoolantTemp=85 Gear=1
 moon run --target native cmd/moondbc -- format examples/vehicle.dbc
 moon run --target native cmd/moondbc -- format --check examples/vehicle.dbc
@@ -133,6 +137,9 @@ new declaration line in the report.
 All CLI commands that validate a DBC include source line and column for
 locatable semantic errors, so malformed layouts can be found directly from CI
 output.
+`summary` reports decoded frames and signals separately from unknown IDs,
+malformed records and short payloads. It exits nonzero for malformed or
+undecodable known frames, while allowing partial DBC coverage from unknown IDs.
 
 The [extended multiplexing example](examples/extended-multiplex.dbc) uses
 `SG_MUL_VAL_` to activate the same signal in multiple selector ranges. Those
@@ -189,8 +196,9 @@ compiled and tested on the supported targets.
 - deterministic DBC export with parse-write-parse round-trip support;
 - Classical CAN and CAN FD SocketCAN/candump parsing, formatting, and direct decoding;
 - recoverable multi-frame trace decoding and CSV signal export;
+- concise trace coverage summaries for matching recorded traffic against a DBC;
 - recoverable diagnostics for malformed and misplaced declarations;
-- native `check`, `list`, trace-to-CSV `decode`, physical-value `encode`, deterministic `format`, compatibility `diff`, `generate`, and `generate-codecs` commands;
+- native `check`, `list`, trace-to-CSV `decode`, coverage `summary`, physical-value `encode`, deterministic `format`, compatibility `diff`, `generate`, and `generate-codecs` commands;
 - duplicate message and signal checks;
 - portable library code for Wasm, Wasm-GC, JavaScript, and native targets.
 

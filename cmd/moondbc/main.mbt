@@ -43,6 +43,22 @@ fn command() -> @argparse.Command {
         ],
       ),
       @argparse.Command(
+        "summary",
+        about="Count decoded and unknown frames in a CAN trace.",
+        positionals=[
+          @argparse.PositionArg(
+            "dbc",
+            about="Path to the DBC file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+          @argparse.PositionArg(
+            "trace",
+            about="Path to the CAN trace file.",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ],
+      ),
+      @argparse.Command(
         "diff",
         about="Compare two DBC files and report compatibility.",
         positionals=[
@@ -160,7 +176,7 @@ async fn main {
       process_exit(2)
       return
     }
-    if name == "decode" {
+    if name == "decode" || name == "summary" {
       guard subcommand.values is { "trace": [trace_path], .. } else { return }
       let trace_source : String? = Some(@fs.read_file(trace_path).text()) catch {
         _ => None
@@ -170,7 +186,11 @@ async fn main {
         process_exit(2)
         return
       }
-      @lib.run_decode_cli(path, source, trace_path, trace_source)
+      if name == "decode" {
+        @lib.run_decode_cli(path, source, trace_path, trace_source)
+      } else {
+        @lib.run_summary_cli(path, source, trace_path, trace_source)
+      }
     } else if name == "encode" {
       guard subcommand.values
         is { "id": [identifier], "assignment": assignments, .. } else {

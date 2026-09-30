@@ -74,6 +74,35 @@ test "retain trace diagnostics and continue decoding" {
 }
 
 ///|
+test "summarize partial DBC coverage separately from malformed frames" {
+  let database = @moondbc.parse(
+      (
+        #|BO_ 291 Status: 2 ECU
+        #| SG_ Speed : 0|16@1+ (0.5,0) [0|32767.5] "km/h" Logger
+      ),
+    ).database
+  let result = database.decode_trace(
+    (
+      #|// omitted from record count
+      #|123#F401
+      #|777#00
+      #|123#00
+      #|not-a-frame
+      #|123#0000
+    ),
+  )
+  assert_eq(result.summary(), {
+    records: 5,
+    decoded_frames: 2,
+    decoded_signals: 2,
+    unknown_frames: 1,
+    malformed_records: 1,
+    short_payload_frames: 1,
+    failed_frames: 0,
+  })
+}
+
+///|
 test "export decoded trace values as CSV" {
   let database = @moondbc.parse(
       (

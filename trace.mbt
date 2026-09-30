@@ -29,6 +29,49 @@ pub(all) struct TraceDecodeResult {
 } derive(Eq, Debug)
 
 ///|
+/// Counts accepted records and the reasons other records could not be decoded.
+/// Unknown identifiers are kept separate because partial DBC coverage is normal.
+pub(all) struct TraceSummary {
+  records : Int
+  decoded_frames : Int
+  decoded_signals : Int
+  unknown_frames : Int
+  malformed_records : Int
+  short_payload_frames : Int
+  failed_frames : Int
+} derive(Eq, Debug)
+
+///|
+pub fn TraceDecodeResult::summary(self : TraceDecodeResult) -> TraceSummary {
+  let mut decoded_signals = 0
+  for frame in self.frames {
+    decoded_signals += frame.decoded.signals.length()
+  }
+  let mut unknown_frames = 0
+  let mut malformed_records = 0
+  let mut short_payload_frames = 0
+  let mut failed_frames = 0
+  for diagnostic in self.diagnostics {
+    match diagnostic.error {
+      TraceFrameTextError(_) | TraceCanLogTextError(_) => malformed_records += 1
+      TraceFrameDecodeError(UnknownCanMessage(_, _) | UnknownMessage(_)) =>
+        unknown_frames += 1
+      TraceFrameDecodeError(PayloadTooShort(_, _)) => short_payload_frames += 1
+      TraceFrameDecodeError(_) => failed_frames += 1
+    }
+  }
+  {
+    records: self.frames.length() + self.diagnostics.length(),
+    decoded_frames: self.frames.length(),
+    decoded_signals,
+    unknown_frames,
+    malformed_records,
+    short_payload_frames,
+    failed_frames,
+  }
+}
+
+///|
 pub fn TraceDecodeResult::is_valid(self : TraceDecodeResult) -> Bool {
   self.diagnostics.is_empty()
 }

@@ -43,6 +43,7 @@ jobs:
           moon run --target native cmd/moondbc -- check fixtures/opendbc/gm_global_a_chassis.dbc | grep -q '^OK fixtures/opendbc/gm_global_a_chassis.dbc$'
           moon run --target native cmd/moondbc -- list examples/vehicle.dbc | grep -q '^00000123 extended ExtendedStatus'
           moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Powertrain","Gear",1,1,"","Drive"'
+          moon run --target native cmd/moondbc -- summary examples/vehicle.dbc examples/vehicle.log | grep -q '^Decoded frames: 3$'
           moon run --target native cmd/moondbc -- decode examples/vehicle.dbc examples/vehicle.log | grep -q '"Measurements","Acceleration",1.5,1.5,"m/s2",""'
           test "$(moon run --target native cmd/moondbc -- encode examples/vehicle.dbc 100 EngineSpeed=1000 CoolantTemp=85 Gear=1)" = '100#401F7D0001000000'
           for dbc in examples/*.dbc; do

@@ -414,3 +414,9 @@ pub extend FrameLayoutError with Eq::{not_equal, equal}
 
 ///|
 pub extend FrameLayoutError with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend TraceSummary with Eq::{not_equal, equal}
+
+///|
+pub extend TraceSummary with @moonbitlang/core/debug.Debug::{to_repr}

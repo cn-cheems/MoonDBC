@@ -92,6 +92,7 @@ test "all DBC CLI gates retain semantic source positions" {
   let outputs = [
     @moondbc.run_cli(@moondbc.CliList, "invalid.dbc", invalid),
     @moondbc.run_decode_cli("invalid.dbc", invalid, "capture.log", "12C#00"),
+    @moondbc.run_summary_cli("invalid.dbc", invalid, "capture.log", "12C#00"),
     @moondbc.run_diff_cli(
       "valid.dbc", "BO_ 300 Status: 1 ECU\n SG_ First : 0|8@1+ (1,0) [0|255] \"\" ECU",
       "invalid.dbc", invalid,
@@ -193,6 +194,43 @@ test "decode a candump trace as CSV" {
       "",
     ].join("\r\n"),
   )
+}
+
+///|
+test "summarize partial coverage without flooding stderr" {
+  let dbc =
+    #|BO_ 291 Status: 2 ECU
+    #| SG_ Speed : 0|16@1+ (0.5,0) [0|32767.5] "km/h" Logger
+  let output = @moondbc.run_summary_cli(
+    "vehicle.dbc",
+    dbc,
+    "capture.log",
+    (
+      #|123#F401
+      #|777#00
+      #|123#0000
+    ),
+  )
+  assert_eq(output, {
+    stdout: (
+      #|Trace: capture.log
+      #|Records: 3
+      #|Decoded frames: 2
+      #|Decoded signals: 2
+      #|Unknown frame IDs: 1
+      #|Malformed records: 0
+      #|Short payloads: 0
+      #|Other decode failures: 0
+      #|
+    ),
+    stderr: "",
+    exit_code: 0,
+  })
+  let invalid = @moondbc.run_summary_cli(
+    "vehicle.dbc", dbc, "capture.log", "123#00",
+  )
+  assert_eq(invalid.exit_code, 1)
+  assert_true(invalid.stdout.find("Short payloads: 1") is Some(_))
 }
 
 ///|

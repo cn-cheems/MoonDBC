@@ -508,6 +508,56 @@ pub fn run_decode_cli(
 }
 
 ///|
+/// Summarize how much of a trace a DBC covers without emitting one diagnostic
+/// per unknown frame. Unknown identifiers are informational; malformed records
+/// and failed decodes still make the command fail.
+pub fn run_summary_cli(
+  dbc_path : String,
+  dbc_source : StringView,
+  trace_path : String,
+  trace_source : StringView,
+) -> CliOutput {
+  let parsed = parse_with_source_map(dbc_source)
+  if !parsed.diagnostics.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_diagnostics(dbc_path, parsed.diagnostics),
+      exit_code: 1,
+    }
+  }
+  let issues = parsed.locate_validation_issues()
+  if !issues.is_empty() {
+    return {
+      stdout: "",
+      stderr: cli_validation_issues(dbc_path, issues),
+      exit_code: 1,
+    }
+  }
+  let summary = parsed.database.decode_trace(trace_source).summary()
+  {
+    stdout: [
+      "Trace: \{trace_path}",
+      "Records: \{summary.records}",
+      "Decoded frames: \{summary.decoded_frames}",
+      "Decoded signals: \{summary.decoded_signals}",
+      "Unknown frame IDs: \{summary.unknown_frames}",
+      "Malformed records: \{summary.malformed_records}",
+      "Short payloads: \{summary.short_payload_frames}",
+      "Other decode failures: \{summary.failed_frames}",
+      "",
+    ].join("\n"),
+    stderr: "",
+    exit_code: if summary.malformed_records == 0 &&
+      summary.short_payload_frames == 0 &&
+      summary.failed_frames == 0 {
+      0
+    } else {
+      1
+    },
+  }
+}
+
+///|
 /// Parse and validate two DBC sources, then render their compatibility report
 /// as Markdown. Breaking changes use exit code 3 so CI can distinguish an
 /// incompatible database revision from malformed input.
