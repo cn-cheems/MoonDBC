@@ -161,13 +161,13 @@ compiled and tested on the supported targets.
 ## Current scope
 
 - DBC environment variables (EV_ and ENVVAR_DATA_) with type, bounds, initial value, access metadata, optional data size, source locations, validation, deterministic export, and compatibility reports;
-- Environment-variable comments, value descriptions, and attribute assignments are not yet supported and remain explicit parse errors;
+- Environment-variable `CM_ EV_` comments are preserved; environment-variable value descriptions and attribute assignments are not yet supported and remain explicit parse errors;
 - typed models for databases, messages, signals, byte order, signedness, and multiplexing;
 - parsing of core message and signal declarations;
 - deferred resolution of `VAL_` value descriptions and label lookup;
 - reusable `VAL_TABLE_` enumerations with lookup, source locations, compatibility reports, and deterministic export;
 - named `SIG_GROUP_` metadata with reference validation, lookup, and deterministic export;
-- database, node, message, and signal `CM_` comments with reference validation;
+- database, node, message, signal, and environment-variable `CM_` comments with reference validation;
 - scoped DBC attribute definitions, defaults, assignments, lookup, and deterministic export;
 - multi-transmitter messages through deferred `BO_TX_BU_` resolution;
 - bit-31 DBC extended-frame identifiers with collision-safe SocketCAN lookup;

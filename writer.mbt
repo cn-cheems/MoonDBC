@@ -443,6 +443,13 @@ fn write_comment(comment : DbcComment) -> Result[String, DbcWriteError] {
       }
       "CM_ SG_ \{message_id} \{signal_name}"
     }
+    EnvironmentComment(name) => {
+      match check_dbc_token("comment environment variable", name) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
+      "CM_ EV_ \{name}"
+    }
   }
   let text = match escape_dbc_comment(comment.text) {
     Ok(value) => value

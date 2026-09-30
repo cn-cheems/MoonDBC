@@ -78,6 +78,7 @@ fn comment_target_text(target : DbcCommentTarget) -> String {
     MessageComment(message_id) => "message \{message_id}"
     SignalComment(message_id, signal_name) =>
       "signal \{signal_name} in message \{message_id}"
+    EnvironmentComment(name) => "environment variable \{name}"
   }
 }
 

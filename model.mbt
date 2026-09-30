@@ -113,6 +113,7 @@ pub(all) enum DbcCommentTarget {
   NodeComment(String)
   MessageComment(UInt)
   SignalComment(UInt, String)
+  EnvironmentComment(String)
 } derive(Eq, Debug)
 
 ///|
@@ -441,6 +442,17 @@ pub fn Database::signal_comment(
   signal_name : StringView,
 ) -> String? {
   match self.find_comment(SignalComment(message_id, signal_name.to_owned())) {
+    Some(comment) => Some(comment.text)
+    None => None
+  }
+}
+
+///|
+pub fn Database::environment_comment(
+  self : Database,
+  name : StringView,
+) -> String? {
+  match self.find_comment(EnvironmentComment(name.to_owned())) {
     Some(comment) => Some(comment.text)
     None => None
   }

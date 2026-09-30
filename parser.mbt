@@ -678,6 +678,12 @@ fn parse_comment_line(
   let target = match header {
     [] => DatabaseComment
     [kind, node] if kind == "BU_" => NodeComment(node.to_owned())
+    [kind, name] if kind == "EV_" =>
+      if dbc_token_is_valid(name) {
+        EnvironmentComment(name.to_owned())
+      } else {
+        return Err("environment comment name is invalid")
+      }
     [kind, message_id] if kind == "BO_" =>
       match parse_uint(message_id) {
         Some(value) =>
@@ -701,7 +707,8 @@ fn parse_comment_line(
       }
       SignalComment(id, signal.to_owned())
     }
-    _ => return Err("comment target must be the database, BU_, BO_, or SG_")
+    _ =>
+      return Err("comment target must be the database, BU_, BO_, SG_, or EV_")
   }
   Ok((target, text))
 }
@@ -1430,6 +1437,18 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
               )
               false
             }
+        }
+      EnvironmentComment(name) =>
+        if environment_variables.any(variable => variable.name == name) {
+          true
+        } else {
+          add_diagnostic(
+            diagnostics,
+            pending.line,
+            "DBC054",
+            "comment refers to an unknown environment variable",
+          )
+          false
         }
     }
     if target_exists {

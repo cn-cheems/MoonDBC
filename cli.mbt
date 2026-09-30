@@ -89,6 +89,8 @@ pub fn ValidationIssue::description(self : ValidationIssue) -> String {
       "comment refers to unknown message \{cli_dbc_id_text(id)}"
     UnknownCommentSignalIssue(id, signal) =>
       "comment refers to unknown signal \{signal} in message \{cli_dbc_id_text(id)}"
+    UnknownCommentEnvironmentIssue(name) =>
+      "comment refers to unknown environment variable \{name}"
     DuplicateMessageTransmitterIssue(id, transmitter) =>
       "message \{cli_dbc_id_text(id)} repeats transmitter \{transmitter}"
     DuplicateAttributeDefinitionIssue(name) =>

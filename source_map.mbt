@@ -293,6 +293,8 @@ fn validation_issue_source(
       source_map.find_comment(MessageComment(id))
     UnknownCommentSignalIssue(id, name) =>
       source_map.find_comment(SignalComment(id, name))
+    UnknownCommentEnvironmentIssue(name) =>
+      source_map.find_comment(EnvironmentComment(name))
     DuplicateAttributeDefinitionIssue(_)
     | DuplicateAttributeDefaultIssue(_)
     | DuplicateAttributeAssignmentIssue(_, _)

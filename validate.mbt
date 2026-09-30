@@ -20,6 +20,7 @@ pub(all) enum ValidationIssue {
   UnknownCommentNodeIssue(String)
   UnknownCommentMessageIssue(UInt)
   UnknownCommentSignalIssue(UInt, String)
+  UnknownCommentEnvironmentIssue(String)
   DuplicateMessageTransmitterIssue(UInt, String)
   DuplicateAttributeDefinitionIssue(String)
   DuplicateAttributeDefaultIssue(String)
@@ -391,6 +392,10 @@ fn validate_comments(
             if message.find_signal(signal_name) is None {
               issues.push(UnknownCommentSignalIssue(message_id, signal_name))
             }
+        }
+      EnvironmentComment(name) =>
+        if database.find_environment_variable(name) is None {
+          issues.push(UnknownCommentEnvironmentIssue(name))
         }
     }
   }

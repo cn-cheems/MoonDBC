@@ -168,6 +168,7 @@ pub fn Database::decode_trace(Self, StringView) -> TraceDecodeResult
 pub fn Database::diff(Self, Self) -> Array[DatabaseChange]
 pub fn Database::encode_can_frame(Self, UInt, Bool, Array[SignalAssignment]) -> Result[CanFrame, FrameEncodeError]
 pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Bytes, FrameEncodeError]
+pub fn Database::environment_comment(Self, StringView) -> String?
 pub fn Database::equal(Self, Self) -> Bool
 pub fn Database::find_can_message(Self, UInt, Bool) -> Message?
 pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
@@ -308,6 +309,7 @@ pub(all) enum DbcCommentTarget {
   NodeComment(String)
   MessageComment(UInt)
   SignalComment(UInt, String)
+  EnvironmentComment(String)
 } derive(Eq, @debug.Debug)
 pub fn DbcCommentTarget::equal(Self, Self) -> Bool
 pub fn DbcCommentTarget::not_equal(Self, Self) -> Bool
@@ -781,6 +783,7 @@ pub(all) enum ValidationIssue {
   UnknownCommentNodeIssue(String)
   UnknownCommentMessageIssue(UInt)
   UnknownCommentSignalIssue(UInt, String)
+  UnknownCommentEnvironmentIssue(String)
   DuplicateMessageTransmitterIssue(UInt, String)
   DuplicateAttributeDefinitionIssue(String)
   DuplicateAttributeDefaultIssue(String)
