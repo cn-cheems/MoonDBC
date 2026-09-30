@@ -591,6 +591,40 @@ fn contains_value_description(
 }
 
 ///|
+fn parse_value_description_label(
+  text : StringView,
+  context : StringView,
+) -> Result[(String, StringView), String] {
+  if !text.has_prefix("\"") {
+    return Err("\{context} is missing an opening quote")
+  }
+  let mut search = 1
+  let mut close_quote = -1
+  while close_quote < 0 {
+    let position = match find_after(text, search, "\"") {
+      Some(value) => value
+      None => return Err("\{context} is missing a closing quote")
+    }
+    let mut slash_count = 0
+    let mut before = position - 1
+    while before >= 0 && text[before:before + 1] == "\\" {
+      slash_count += 1
+      before -= 1
+    }
+    if slash_count % 2 == 0 {
+      close_quote = position
+    } else {
+      search = position + 1
+    }
+  }
+  let label = match parse_comment_text(text[1:close_quote + 1]) {
+    Ok(value) => value
+    Err(_) => return Err("\{context} is invalid")
+  }
+  Ok((label, text[close_quote + 1:].trim()))
+}
+
+///|
 fn parse_value_line(
   line : StringView,
 ) -> Result[(UInt, String, Array[ValueDescription]), String] {
@@ -633,12 +667,13 @@ fn parse_value_line(
     if contains_value_description(entries, value) {
       return Err("value table contains a duplicate key")
     }
-    let close_quote = match find_after(rest, open_quote + 1, "\"") {
-      Some(value) => value
-      None => return Err("value description is missing a closing quote")
+    let (label, remaining) = match
+      parse_value_description_label(rest[open_quote:], "value description") {
+      Ok(value) => value
+      Err(message) => return Err(message)
     }
-    entries.push({ value, label: rest[open_quote + 1:close_quote].to_owned(), })
-    rest = rest[close_quote + 1:].trim()
+    entries.push({ value, label, })
+    rest = remaining
   }
   Ok((message_id, signal_name, entries))
 }
@@ -682,12 +717,16 @@ fn parse_global_value_table_line(
     if contains_value_description(entries, value) {
       return Err("global value table contains a duplicate key")
     }
-    let close_quote = match find_after(rest, open_quote + 1, "\"") {
-      Some(value) => value
-      None => return Err("global value description is missing a closing quote")
+    let (label, remaining) = match
+      parse_value_description_label(
+        rest[open_quote:],
+        "global value description",
+      ) {
+      Ok(value) => value
+      Err(message) => return Err(message)
     }
-    entries.push({ value, label: rest[open_quote + 1:close_quote].to_owned(), })
-    rest = rest[close_quote + 1:].trim()
+    entries.push({ value, label, })
+    rest = remaining
   }
   Ok((name.to_owned(), entries))
 }

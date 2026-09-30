@@ -31,6 +31,23 @@ test "resolve value table declared before its signal" {
 }
 
 ///|
+test "preserve escaped value description labels through DBC export" {
+  let source =
+    #|BO_ 105 Status: 1 ECU
+    #| SG_ State : 0|2@1+ (1,0) [0|3] "" Dashboard
+    #|
+    #|VAL_ 105 State 0 "Drive \"enabled\"" 1 "C:\\can";
+  let parsed = @moondbc.parse(source)
+  assert_eq(parsed.diagnostics, [])
+  let table = parsed.database.find_value_table(105U, "State").unwrap()
+  assert_eq(table.find_label(0L), Some("Drive \"enabled\""))
+  assert_eq(table.find_label(1L), Some("C:\\can"))
+  let reparsed = @moondbc.parse(parsed.database.to_dbc().unwrap())
+  assert_eq(reparsed.diagnostics, [])
+  assert_eq(reparsed.database, parsed.database)
+}
+
+///|
 test "report malformed value table" {
   let result = @moondbc.parse(
     (

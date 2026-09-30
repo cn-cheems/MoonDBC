@@ -6,11 +6,12 @@ test "parse, find, and write global DBC value tables" {
     #|BO_ 430 Status: 1 ECU
     #| SG_ State : 0|2@1+ (1,0) [0|3] "" Dashboard
     #|
-    #|VAL_TABLE_ StateNames 0 "Off" 1 "On" 2 "Fault";
+    #|VAL_TABLE_ StateNames 0 "Off" 1 "On" 2 "Fault \"entry\"";
   let parsed = @moondbc.parse(source)
   assert_eq(parsed.diagnostics, [])
   let table = parsed.database.find_global_value_table("StateNames").unwrap()
   assert_eq(table.entries[1], { value: 1L, label: "On", })
+  assert_eq(table.entries[2], { value: 2L, label: "Fault \"entry\"", })
   let written = parsed.database.to_dbc().unwrap()
   assert_eq(written, source)
   let reparsed = @moondbc.parse(written)

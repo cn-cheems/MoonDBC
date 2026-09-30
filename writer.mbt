@@ -336,11 +336,11 @@ fn write_value_table(
   }
   let parts = ["VAL_ \{table.message_id} \{table.signal_name}"]
   for entry in table.entries {
-    match check_dbc_quoted_text("value description label", entry.label) {
+    let label = match escape_dbc_comment(entry.label) {
+      Ok(value) => value
       Err(error) => return Err(error)
-      Ok(_) => ()
     }
-    parts.push("\{entry.value} \"\{entry.label}\"")
+    parts.push("\{entry.value} \"\{label}\"")
   }
   let body = parts.join(" ")
   lines.push("\{body};")
@@ -361,11 +361,11 @@ fn write_global_value_table(
   }
   let parts = ["VAL_TABLE_ \{table.name}"]
   for entry in table.entries {
-    match check_dbc_quoted_text("global value description label", entry.label) {
+    let label = match escape_dbc_comment(entry.label) {
+      Ok(value) => value
       Err(error) => return Err(error)
-      Ok(_) => ()
     }
-    parts.push("\{entry.value} \"\{entry.label}\"")
+    parts.push("\{entry.value} \"\{label}\"")
   }
   lines.push("\{parts.join(" ")};")
   Ok(())
