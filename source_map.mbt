@@ -35,6 +35,12 @@ pub(all) struct ValueTableSourceLocation {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct GlobalValueTableSourceLocation {
+  name : String
+  declaration : SourceSpan
+} derive(Eq, Debug)
+
+///|
 pub(all) struct SignalGroupSourceLocation {
   message_id : UInt
   name : String
@@ -49,6 +55,7 @@ pub(all) struct DbcSourceMap {
   signals : Array[SignalSourceLocation]
   comments : Array[CommentSourceLocation]
   value_tables : Array[ValueTableSourceLocation]
+  global_value_tables : Array[GlobalValueTableSourceLocation]
   signal_groups : Array[SignalGroupSourceLocation]
 } derive(Eq, Debug)
 
@@ -134,6 +141,19 @@ pub fn DbcSourceMap::find_value_table(
 }
 
 ///|
+pub fn DbcSourceMap::find_global_value_table(
+  self : DbcSourceMap,
+  name : StringView,
+) -> SourceSpan? {
+  for location in self.global_value_tables {
+    if location.name.view() == name {
+      return Some(location.declaration)
+    }
+  }
+  None
+}
+
+///|
 pub fn DbcSourceMap::find_signal_group(
   self : DbcSourceMap,
   message_id : UInt,
@@ -169,6 +189,10 @@ fn change_source(
       source_map.find_value_table(table.message_id, table.signal_name)
     ValueTableModifiedChange(id, name, _, _) =>
       source_map.find_value_table(id, name)
+    GlobalValueTableAddedChange(table) | GlobalValueTableRemovedChange(table) =>
+      source_map.find_global_value_table(table.name)
+    GlobalValueTableModifiedChange(name, _, _) =>
+      source_map.find_global_value_table(name)
     SignalGroupAddedChange(group) | SignalGroupRemovedChange(group) =>
       source_map.find_signal_group(group.message_id, group.name)
     SignalGroupModifiedChange(id, name, _, _) =>
@@ -190,6 +214,7 @@ pub fn SourceParseResult::diff_with_locations(
       | MessageAddedChange(_)
       | SignalAddedChange(_, _)
       | ValueTableAddedChange(_)
+      | GlobalValueTableAddedChange(_)
       | SignalGroupAddedChange(_) => None
       _ => change_source(self.source_map, change)
     }
@@ -198,6 +223,7 @@ pub fn SourceParseResult::diff_with_locations(
       | MessageRemovedChange(_)
       | SignalRemovedChange(_, _)
       | ValueTableRemovedChange(_)
+      | GlobalValueTableRemovedChange(_)
       | SignalGroupRemovedChange(_) => None
       _ => change_source(newer.source_map, change)
     }
@@ -247,6 +273,8 @@ fn validation_issue_source(
     | InvalidAttributeTargetIssue(_, _)
     | AttributeScopeMismatchIssue(_, _)
     | InvalidAttributeValueIssue(_) => None
+    DuplicateGlobalValueTableIssue(name) | InvalidGlobalValueTableIssue(name) =>
+      source_map.find_global_value_table(name)
     DuplicateSignalGroupIssue(id, name)
     | InvalidSignalGroupIssue(id, name)
     | UnknownSignalGroupMessageIssue(id, name) =>

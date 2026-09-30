@@ -107,6 +107,7 @@ test "validate manually constructed signal groups" {
       },
     ],
     value_tables: [],
+    global_value_tables: [],
     signal_groups: [
       { message_id: 422U, name: "", repetition: 0, signals: [], },
       { message_id: 422U, name: "State", repetition: 1, signals: ["Missing"], },

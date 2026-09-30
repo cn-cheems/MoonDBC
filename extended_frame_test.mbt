@@ -109,6 +109,7 @@ test "reject invalid DBC and CAN identifier ranges" {
     nodes: [],
     messages: [message],
     value_tables: [],
+    global_value_tables: [],
     signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),

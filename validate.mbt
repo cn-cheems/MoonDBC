@@ -32,6 +32,8 @@ pub(all) enum ValidationIssue {
   InvalidSignalGroupIssue(UInt, String)
   UnknownSignalGroupMessageIssue(UInt, String)
   UnknownSignalGroupMemberIssue(UInt, String, String)
+  DuplicateGlobalValueTableIssue(String)
+  InvalidGlobalValueTableIssue(String)
 } derive(Eq, Debug)
 
 ///|
@@ -496,11 +498,36 @@ fn validate_signal_groups(
 }
 
 ///|
+fn validate_global_value_tables(
+  database : Database,
+  issues : Array[ValidationIssue],
+) -> Unit {
+  for index, table in database.global_value_tables {
+    for previous = 0; previous < index; previous = previous + 1 {
+      if database.global_value_tables[previous].name == table.name {
+        issues.push(DuplicateGlobalValueTableIssue(table.name))
+      }
+    }
+    if table.name.is_empty() || table.entries.is_empty() {
+      issues.push(InvalidGlobalValueTableIssue(table.name))
+    }
+    for entry_index, entry in table.entries {
+      for previous = 0; previous < entry_index; previous = previous + 1 {
+        if table.entries[previous].value == entry.value {
+          issues.push(InvalidGlobalValueTableIssue(table.name))
+        }
+      }
+    }
+  }
+}
+
+///|
 /// Validate cross-field and bit-layout constraints that are not syntax errors.
 pub fn Database::validate(self : Database) -> Array[ValidationIssue] {
   let issues : Array[ValidationIssue] = []
   validate_comments(self, issues)
   validate_attributes(self, issues)
+  validate_global_value_tables(self, issues)
   validate_signal_groups(self, issues)
   for index, message in self.messages {
     for previous = 0; previous < index; previous = previous + 1 {

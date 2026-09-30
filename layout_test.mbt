@@ -144,6 +144,7 @@ test "report invalid manually constructed layout metadata" {
       },
     ],
     value_tables: [],
+    global_value_tables: [],
     signal_groups: [],
     comments: [],
     attributes: @moondbc.DbcAttributes::empty(),

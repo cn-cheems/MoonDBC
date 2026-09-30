@@ -48,6 +48,14 @@ priv struct PendingValueTable {
 }
 
 ///|
+priv struct PendingGlobalValueTable {
+  line : Int
+  name : String
+  entries : Array[ValueDescription]
+  declaration : SourceSpan
+}
+
+///|
 priv struct PendingDbcComment {
   line : Int
   target : DbcCommentTarget
@@ -636,6 +644,55 @@ fn parse_value_line(
 }
 
 ///|
+fn parse_global_value_table_line(
+  line : StringView,
+) -> Result[(String, Array[ValueDescription]), String] {
+  let body = line[10:].trim()
+  if !body.has_suffix(";") {
+    return Err("global value table declaration is missing ';'")
+  }
+  let content = body[:body.length() - 1].trim()
+  let first_quote = match content.find("\"") {
+    Some(value) => value
+    None => return Err("global value table requires an entry")
+  }
+  let header = words(content[:first_quote])
+  if header.length() != 2 {
+    return Err("global value table requires a name and entry value")
+  }
+  let name = header[0]
+  if !dbc_token_is_valid(name) {
+    return Err("global value table name is invalid")
+  }
+  let entries : Array[ValueDescription] = []
+  let mut rest = content[name.length():].trim()
+  while !rest.is_empty() {
+    let open_quote = match rest.find("\"") {
+      Some(value) => value
+      None => return Err("global value description is missing an opening quote")
+    }
+    let raw_fields = words(rest[:open_quote])
+    if raw_fields.length() != 1 {
+      return Err("global value description requires one integer value")
+    }
+    let value = match parse_int64(raw_fields[0]) {
+      Some(value) => value
+      None => return Err("global value description key is not an integer")
+    }
+    if contains_value_description(entries, value) {
+      return Err("global value table contains a duplicate key")
+    }
+    let close_quote = match find_after(rest, open_quote + 1, "\"") {
+      Some(value) => value
+      None => return Err("global value description is missing a closing quote")
+    }
+    entries.push({ value, label: rest[open_quote + 1:close_quote].to_owned(), })
+    rest = rest[close_quote + 1:].trim()
+  }
+  Ok((name.to_owned(), entries))
+}
+
+///|
 fn contains_message_id(messages : Array[Message], id : UInt) -> Bool {
   for message in messages {
     if message.id == id {
@@ -714,6 +771,19 @@ fn contains_value_table(
 }
 
 ///|
+fn database_has_global_value_table(
+  tables : Array[GlobalValueTable],
+  name : StringView,
+) -> Bool {
+  for table in tables {
+    if table.name.view() == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn contains_comment_target(
   comments : Array[DbcComment],
   target : DbcCommentTarget,
@@ -773,10 +843,13 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
   let signal_locations : Array[SignalSourceLocation] = []
   let comment_locations : Array[CommentSourceLocation] = []
   let value_table_locations : Array[ValueTableSourceLocation] = []
+  let global_value_table_locations : Array[GlobalValueTableSourceLocation] = []
   let signal_group_locations : Array[SignalGroupSourceLocation] = []
   let nodes : Array[String] = []
   let pending_value_tables : Array[PendingValueTable] = []
   let value_tables : Array[ValueTable] = []
+  let pending_global_value_tables : Array[PendingGlobalValueTable] = []
+  let global_value_tables : Array[GlobalValueTable] = []
   let pending_comments : Array[PendingDbcComment] = []
   let comments : Array[DbcComment] = []
   let pending_message_transmitters : Array[PendingMessageTransmitters] = []
@@ -998,6 +1071,18 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
         Err(message) =>
           add_diagnostic(diagnostics, line_number, "DBC007", message)
       }
+    } else if line.has_prefix("VAL_TABLE_ ") {
+      match parse_global_value_table_line(line) {
+        Ok((name, entries)) =>
+          pending_global_value_tables.push({
+            line: line_number,
+            name,
+            entries,
+            declaration: declaration_span(raw_line, line, line_number),
+          })
+        Err(message) =>
+          add_diagnostic(diagnostics, line_number, "DBC047", message)
+      }
     } else {
       add_diagnostic(
         diagnostics, line_number, "DBC019", "unsupported DBC declaration; the source cannot be used without losing data",
@@ -1046,6 +1131,22 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
           })
         }
       }
+    }
+  }
+  for pending in pending_global_value_tables {
+    if database_has_global_value_table(global_value_tables, pending.name) {
+      add_diagnostic(
+        diagnostics,
+        pending.line,
+        "DBC048",
+        "duplicate global value table name",
+      )
+    } else {
+      global_value_tables.push({ name: pending.name, entries: pending.entries, })
+      global_value_table_locations.push({
+        name: pending.name,
+        declaration: pending.declaration,
+      })
     }
   }
   for pending in pending_comments {
@@ -1427,6 +1528,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
       nodes,
       messages,
       value_tables,
+      global_value_tables,
       signal_groups,
       comments,
       attributes,
@@ -1437,6 +1539,7 @@ pub fn parse_with_source_map(source : StringView) -> SourceParseResult {
       signals: signal_locations,
       comments: comment_locations,
       value_tables: value_table_locations,
+      global_value_tables: global_value_table_locations,
       signal_groups: signal_group_locations,
     },
   }

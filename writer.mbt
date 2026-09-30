@@ -7,6 +7,7 @@ pub(all) enum DbcWriteError {
   DbcWriteNegativeMultiplexValue(UInt, String, Int)
   DbcWriteInvalidMultiplexRange(UInt, String, Int, Int)
   DbcWriteEmptyValueTable(UInt, String)
+  DbcWriteEmptyGlobalValueTable(String)
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
   DbcWriteInvalidAttribute(String)
@@ -347,6 +348,30 @@ fn write_value_table(
 }
 
 ///|
+fn write_global_value_table(
+  lines : Array[String],
+  table : GlobalValueTable,
+) -> Result[Unit, DbcWriteError] {
+  match check_dbc_token("global value table name", table.name) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  if table.entries.is_empty() {
+    return Err(DbcWriteEmptyGlobalValueTable(table.name))
+  }
+  let parts = ["VAL_TABLE_ \{table.name}"]
+  for entry in table.entries {
+    match check_dbc_quoted_text("global value description label", entry.label) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    parts.push("\{entry.value} \"\{entry.label}\"")
+  }
+  lines.push("\{parts.join(" ")};")
+  Ok(())
+}
+
+///|
 fn write_signal_group(
   lines : Array[String],
   group : SignalGroup,
@@ -462,7 +487,8 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
   if !self.messages.is_empty() ||
     !self.comments.is_empty() ||
     has_attribute_section ||
-    !self.value_tables.is_empty() {
+    !self.value_tables.is_empty() ||
+    !self.global_value_tables.is_empty() {
     lines.push("")
   }
   for index, message in self.messages {
@@ -476,7 +502,8 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       has_attribute_section ||
       has_transmitter_section ||
       !self.comments.is_empty() ||
-      !self.value_tables.is_empty() {
+      !self.value_tables.is_empty() ||
+      !self.global_value_tables.is_empty() {
       lines.push("")
     }
   }
@@ -489,7 +516,8 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       has_attribute_section ||
       has_transmitter_section ||
       !self.comments.is_empty() ||
-      !self.value_tables.is_empty()
+      !self.value_tables.is_empty() ||
+      !self.global_value_tables.is_empty()
     ) {
     lines.push("")
   }
@@ -504,7 +532,8 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       has_transmitter_section ||
       has_attribute_section ||
       !self.comments.is_empty() ||
-      !self.value_tables.is_empty()
+      !self.value_tables.is_empty() ||
+      !self.global_value_tables.is_empty()
     ) {
     lines.push("")
   }
@@ -519,7 +548,8 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
     (
       has_attribute_section ||
       !self.comments.is_empty() ||
-      !self.value_tables.is_empty()
+      !self.value_tables.is_empty() ||
+      !self.global_value_tables.is_empty()
     ) {
     lines.push("")
   }
@@ -530,14 +560,19 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
     }
   }
   if !self.comments.is_empty() &&
-    (has_attribute_section || !self.value_tables.is_empty()) {
+    (
+      has_attribute_section ||
+      !self.value_tables.is_empty() ||
+      !self.global_value_tables.is_empty()
+    ) {
     lines.push("")
   }
   match write_attributes(lines, self.attributes) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  if has_attribute_section && !self.value_tables.is_empty() {
+  if has_attribute_section &&
+    (!self.value_tables.is_empty() || !self.global_value_tables.is_empty()) {
     lines.push("")
   }
   for index, table in self.value_tables {
@@ -545,7 +580,19 @@ pub fn Database::to_dbc(self : Database) -> Result[String, DbcWriteError] {
       Err(error) => return Err(error)
       Ok(_) => ()
     }
-    if index + 1 < self.value_tables.length() || !self.signal_groups.is_empty() {
+    if index + 1 < self.value_tables.length() ||
+      !self.global_value_tables.is_empty() ||
+      !self.signal_groups.is_empty() {
+      lines.push("")
+    }
+  }
+  for index, table in self.global_value_tables {
+    match write_global_value_table(lines, table) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    if index + 1 < self.global_value_tables.length() ||
+      !self.signal_groups.is_empty() {
       lines.push("")
     }
   }

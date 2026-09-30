@@ -148,6 +148,7 @@ pub(all) struct Database {
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
+  global_value_tables : Array[GlobalValueTable]
   signal_groups : Array[SignalGroup]
   comments : Array[DbcComment]
   attributes : DbcAttributes
@@ -169,6 +170,7 @@ pub fn Database::encode_frame(Self, UInt, Array[SignalAssignment]) -> Result[Byt
 pub fn Database::equal(Self, Self) -> Bool
 pub fn Database::find_can_message(Self, UInt, Bool) -> Message?
 pub fn Database::find_comment(Self, DbcCommentTarget) -> DbcComment?
+pub fn Database::find_global_value_table(Self, StringView) -> GlobalValueTable?
 pub fn Database::find_message(Self, UInt) -> Message?
 pub fn Database::find_signal_group(Self, UInt, StringView) -> SignalGroup?
 pub fn Database::find_value_table(Self, UInt, StringView) -> ValueTable?
@@ -198,6 +200,9 @@ pub(all) enum DatabaseChange {
   ValueTableAddedChange(ValueTable)
   ValueTableRemovedChange(ValueTable)
   ValueTableModifiedChange(UInt, String, ValueTable, ValueTable)
+  GlobalValueTableAddedChange(GlobalValueTable)
+  GlobalValueTableRemovedChange(GlobalValueTable)
+  GlobalValueTableModifiedChange(String, GlobalValueTable, GlobalValueTable)
   SignalGroupAddedChange(SignalGroup)
   SignalGroupRemovedChange(SignalGroup)
   SignalGroupModifiedChange(UInt, String, SignalGroup, SignalGroup)
@@ -308,10 +313,12 @@ pub(all) struct DbcSourceMap {
   signals : Array[SignalSourceLocation]
   comments : Array[CommentSourceLocation]
   value_tables : Array[ValueTableSourceLocation]
+  global_value_tables : Array[GlobalValueTableSourceLocation]
   signal_groups : Array[SignalGroupSourceLocation]
 } derive(Eq, @debug.Debug)
 pub fn DbcSourceMap::equal(Self, Self) -> Bool
 pub fn DbcSourceMap::find_comment(Self, DbcCommentTarget) -> SourceSpan?
+pub fn DbcSourceMap::find_global_value_table(Self, StringView) -> SourceSpan?
 pub fn DbcSourceMap::find_message(Self, UInt) -> SourceSpan?
 pub fn DbcSourceMap::find_signal(Self, UInt, StringView) -> SourceSpan?
 pub fn DbcSourceMap::find_signal_group(Self, UInt, StringView) -> SourceSpan?
@@ -327,6 +334,7 @@ pub(all) enum DbcWriteError {
   DbcWriteNegativeMultiplexValue(UInt, String, Int)
   DbcWriteInvalidMultiplexRange(UInt, String, Int, Int)
   DbcWriteEmptyValueTable(UInt, String)
+  DbcWriteEmptyGlobalValueTable(String)
   DbcWriteDuplicateTransmitter(UInt, String)
   DbcWriteInvalidMessageIdentifier(UInt)
   DbcWriteInvalidAttribute(String)
@@ -493,6 +501,22 @@ pub(all) struct FrameLayoutOwner {
 pub fn FrameLayoutOwner::equal(Self, Self) -> Bool
 pub fn FrameLayoutOwner::not_equal(Self, Self) -> Bool
 pub fn FrameLayoutOwner::to_repr(Self) -> @debug.Repr
+
+pub(all) struct GlobalValueTable {
+  name : String
+  entries : Array[ValueDescription]
+} derive(Eq, @debug.Debug)
+pub fn GlobalValueTable::equal(Self, Self) -> Bool
+pub fn GlobalValueTable::not_equal(Self, Self) -> Bool
+pub fn GlobalValueTable::to_repr(Self) -> @debug.Repr
+
+pub(all) struct GlobalValueTableSourceLocation {
+  name : String
+  declaration : SourceSpan
+} derive(Eq, @debug.Debug)
+pub fn GlobalValueTableSourceLocation::equal(Self, Self) -> Bool
+pub fn GlobalValueTableSourceLocation::not_equal(Self, Self) -> Bool
+pub fn GlobalValueTableSourceLocation::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LocatedDatabaseChange {
   change : DatabaseChange
@@ -737,6 +761,8 @@ pub(all) enum ValidationIssue {
   InvalidSignalGroupIssue(UInt, String)
   UnknownSignalGroupMessageIssue(UInt, String)
   UnknownSignalGroupMemberIssue(UInt, String, String)
+  DuplicateGlobalValueTableIssue(String)
+  InvalidGlobalValueTableIssue(String)
 } derive(Eq, @debug.Debug)
 pub fn ValidationIssue::description(Self) -> String
 pub fn ValidationIssue::equal(Self, Self) -> Bool

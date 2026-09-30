@@ -210,6 +210,12 @@ pub extend ValueTable with Eq::{not_equal, equal}
 pub extend ValueTable with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
+pub extend GlobalValueTable with Eq::{not_equal, equal}
+
+///|
+pub extend GlobalValueTable with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
 pub extend SignalGroup with Eq::{not_equal, equal}
 
 ///|
@@ -328,6 +334,14 @@ pub extend ValueTableSourceLocation with Eq::{not_equal, equal}
 
 ///|
 pub extend ValueTableSourceLocation with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend GlobalValueTableSourceLocation with Eq::{not_equal, equal}
+
+///|
+pub extend GlobalValueTableSourceLocation with @moonbitlang/core/debug.Debug::{
   to_repr,
 }
 

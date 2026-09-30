@@ -113,6 +113,10 @@ pub fn ValidationIssue::description(self : ValidationIssue) -> String {
       "signal group \{name} refers to unknown message \{cli_dbc_id_text(id)}"
     UnknownSignalGroupMemberIssue(id, name, signal) =>
       "signal group \{name} in message \{cli_dbc_id_text(id)} refers to unknown signal \{signal}"
+    DuplicateGlobalValueTableIssue(name) =>
+      "global value table \{name} is declared more than once"
+    InvalidGlobalValueTableIssue(name) =>
+      "global value table \{name} is invalid"
   }
 }
 
@@ -282,6 +286,8 @@ fn cli_write_error(error : DbcWriteError) -> String {
       "signal \{signal} in message \{cli_dbc_id_text(id)} has invalid multiplex range \{start}-\{end}"
     DbcWriteEmptyValueTable(id, signal) =>
       "signal \{signal} in message \{cli_dbc_id_text(id)} has an empty value table"
+    DbcWriteEmptyGlobalValueTable(name) =>
+      "global value table \{name} has no entries"
     DbcWriteDuplicateTransmitter(id, transmitter) =>
       "message \{cli_dbc_id_text(id)} repeats transmitter \{transmitter}"
     DbcWriteInvalidMessageIdentifier(id) =>

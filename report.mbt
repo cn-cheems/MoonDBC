@@ -51,6 +51,7 @@ pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
     MessageAddedChange(_)
     | SignalAddedChange(_, _)
     | ValueTableAddedChange(_)
+    | GlobalValueTableAddedChange(_)
     | SignalGroupAddedChange(_) => NonBreaking
     MessageRemovedChange(_)
     | MessageMetadataChangedChange(_, _, _)
@@ -58,6 +59,8 @@ pub fn DatabaseChange::impact(self : DatabaseChange) -> ChangeImpact {
     | SignalModifiedChange(_, _, _, _)
     | ValueTableRemovedChange(_)
     | ValueTableModifiedChange(_, _, _, _)
+    | GlobalValueTableRemovedChange(_)
+    | GlobalValueTableModifiedChange(_, _, _)
     | SignalGroupRemovedChange(_)
     | SignalGroupModifiedChange(_, _, _, _) => Breaking
     AttributesChangedChange(_, _) => Breaking
@@ -107,6 +110,12 @@ pub fn DatabaseChange::summary(self : DatabaseChange) -> String {
       "Value table for \{table.signal_name} in message \{table.message_id} was removed."
     ValueTableModifiedChange(message_id, signal_name, _, _) =>
       "Value table for \{signal_name} in message \{message_id} was modified."
+    GlobalValueTableAddedChange(table) =>
+      "Global value table \{table.name} was added."
+    GlobalValueTableRemovedChange(table) =>
+      "Global value table \{table.name} was removed."
+    GlobalValueTableModifiedChange(name, _, _) =>
+      "Global value table \{name} was modified."
     SignalGroupAddedChange(group) =>
       "Signal group \{group.name} in message \{group.message_id} was added."
     SignalGroupRemovedChange(group) =>

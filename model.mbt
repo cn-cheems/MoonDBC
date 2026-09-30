@@ -76,6 +76,13 @@ pub(all) struct ValueTable {
 } derive(Eq, Debug)
 
 ///|
+/// A reusable named `VAL_TABLE_` enumeration declared at database scope.
+pub(all) struct GlobalValueTable {
+  name : String
+  entries : Array[ValueDescription]
+} derive(Eq, Debug)
+
+///|
 /// A named DBC signal group. Groups are descriptive metadata used by editors,
 /// diagnostics, and generated integrations; they do not alter CAN bit layout.
 pub(all) struct SignalGroup {
@@ -169,6 +176,7 @@ pub(all) struct Database {
   nodes : Array[String]
   messages : Array[Message]
   value_tables : Array[ValueTable]
+  global_value_tables : Array[GlobalValueTable]
   signal_groups : Array[SignalGroup]
   comments : Array[DbcComment]
   attributes : DbcAttributes
@@ -313,6 +321,20 @@ pub fn Database::find_value_table(
 ) -> ValueTable? {
   for table in self.value_tables {
     if table.message_id == message_id && table.signal_name.view() == signal_name {
+      return Some(table)
+    }
+  }
+  None
+}
+
+///|
+/// Find a reusable database-level `VAL_TABLE_` enumeration by name.
+pub fn Database::find_global_value_table(
+  self : Database,
+  name : StringView,
+) -> GlobalValueTable? {
+  for table in self.global_value_tables {
+    if table.name.view() == name {
       return Some(table)
     }
   }

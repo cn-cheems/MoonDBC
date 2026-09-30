@@ -97,6 +97,7 @@ test "validate comment references in manually built databases" {
       },
     ],
     value_tables: [],
+    global_value_tables: [],
     signal_groups: [],
     comments: [
       { target: @moondbc.DatabaseComment, text: "First", },
@@ -124,6 +125,7 @@ test "reject multiline comments during DBC export" {
     nodes: [],
     messages: [],
     value_tables: [],
+    global_value_tables: [],
     signal_groups: [],
     comments: [{ target: @moondbc.DatabaseComment, text: "first\nsecond", }],
     attributes: @moondbc.DbcAttributes::empty(),
